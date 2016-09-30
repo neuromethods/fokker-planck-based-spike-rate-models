@@ -9,6 +9,7 @@ Implementations of spike rate models derived from networks of adaptive exponenti
 * Low-dim. ODE obtained through a linear-nonlinear cascade that is fitted to FP reponse properties.
 
 Furthermore: precalculation codes for the quantities involved in (ii) and (iii).
+
 References: Augustin, Ladenbauer, Baumann, Obermayer (submitted)
 
-Usage: tba
+*Usage*: change to folder `adex_comparison` and see the README file contained therein
