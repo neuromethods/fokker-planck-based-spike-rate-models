@@ -24,7 +24,7 @@ compute_quantities = False
 save_rate_mod = False
 save_EIF_output = False
 save_quantities = False
-plot_filters = False
+plot_filters = True
 plot_quantities = True
 
 
@@ -84,7 +84,7 @@ LN_quantity_names = ['r_ss', 'V_mean_ss',
                      #'tau_sigma_dosc', 'f0_sigma_dosc']  #not needed
                      #'B_mu_bedosc', 'tau1_mu_bedosc', 'tau2_mu_bedosc', 'f0_mu_bedosc']  #not needed
 
-plot_EIF_output_names = ['r1_mumod', 'ifft_r1_mumod', 'r1_sigmamod', 'ifft_r1_sigmamod']                     
+plot_EIF_output_names = ['r1_mumod', 'ifft_r1_mumod'] #'r1_sigmamod', 'ifft_r1_sigmamod'                     
 plot_quantitiy_names =  ['r_ss', 'V_mean_ss',
                          'tau_mu_exp', 'tau_sigma_exp',
                          'tau_mu_dosc', 'f0_mu_dosc']
