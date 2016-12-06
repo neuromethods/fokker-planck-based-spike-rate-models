@@ -1,6 +1,6 @@
 # fokker-planck-based-spike-rate-models
 
-## Note: the code is currently in working state (beta version), a final release is expected in November 2016.
+## Note: the code is currently in working state (beta version), a final release is expected in December 2016.
 
 Implementations of spike rate models derived from networks of adaptive exponential integrate-and-fire models:
 
