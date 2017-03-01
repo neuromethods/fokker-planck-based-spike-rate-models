@@ -203,7 +203,7 @@ def compute_quantities_given_sigma(arg_tuple):
             V_arr_cache, phi_0_noref, q_0 = specsolv.eigenfunction(0., mu, sigma) # 0 is always an eigenvalue
             phi_0_noref = phi_0_noref.real
             norm_fac = normalize(phi_0_noref, V_arr_cache) # ensure that phi_0(V) integrates to unity
-            r_inf_noref = q_0[-1]/norm_fac # the initialiation of the backwards integration is the threshflux
+            r_inf_noref = q_0[-1].real/norm_fac # the initialiation of the backwards integration is the threshflux
 #            r_inf_noref_old = thresholdflux(V_arr_cache, phi_0_noref, 
 #                                            sigma, order=params['threshold_interp_order'])
 #            print('r_inf_new - r_inf_old = {} ; mu={}, sigma={}'.format(r_inf_noref-r_inf_noref_old, mu, sigma))

@@ -9,6 +9,7 @@ from misc.utils import interpolate_xy, lookup_xy, x_filter
 import tables
 import numpy as np
 import math
+import scipy.interpolate
 
 # try to import numba
 # or define dummy decorator
@@ -19,6 +20,8 @@ except:
         return func
 
 import matplotlib.pyplot as plt
+
+print('WARNING: njit seems to be off?')
 
 # CURRENT VERSION OF s2m model (without STACKING) with possinility of HEUN time integraiton method
 #################################################################################################
@@ -346,7 +349,8 @@ def sim_spec2m(mu_ext, dmu_ext_dt, d2mu_ext_dt2, sig_ext,
                 r[i+1] = r[i]  + dt* dr[i]
                 wm[i+1] = wm[i]+ dt_tauw * (a[i]*(Vm_inf[i]-Ew)- wm[i] + b[i] * tauw * r[i])
                 # 2nd derivative of r
-                ddr[i] = (-beta1[i]*dr[i]-(beta0[i]+1.)*r[i]+r_inf[i]-betaC[i])/beta2[i]
+                ddr[i] = (dr[i] - dr[i-1])/dt # for Euler would be equivalent to next line but less redundant
+#                ddr[i] = (-beta1[i]*dr[i]-(beta0[i]+1.)*r[i]+r_inf[i]-betaC[i])/beta2[i]
 
             elif j == 1:
                 dr[i+1]= dr[i] + dt/2.* (((-beta1[i]*dr[i]-(beta0[i]+1.)*r[i]
@@ -357,12 +361,12 @@ def sim_spec2m(mu_ext, dmu_ext_dt, d2mu_ext_dt2, sig_ext,
                 # TODO: add rectify of r via toggle (def: on)
                 wm[i+1] = wm[i]+ dt_tauw/2. * ((a[i]*(Vm_inf[i]-Ew)- wm[i] + b[i] * tauw * r[i])
                                                +(a[i+1]*(Vm_inf[i+1]-Ew)- wm[i+1] + b[i+1] * tauw * r[i+1]))
+                                               
 
         # set variables to zero if they would be integrated below 0
         if rectify and r[i+1]<0:
             r[i+1] = 0.
             dr[i+1] = 0.
-
 #        print('after step i={}'.format(i))
 #        print('mu_tot={}'.format(mu_tot[i]))
 #        print('sig_tot={}'.format(sig_tot[i]))
@@ -451,6 +455,8 @@ def run_spec2m(ext_signal, params, filename_h5,
     c_mu_2          = h5file.root.c_mu_2.read()
     c_sigma_1       = h5file.root.c_sigma_1.read()
     c_sigma_2       = h5file.root.c_sigma_2.read()
+    psi_r_1         = h5file.root.psi_r_1.read()
+    psi_r_2         = h5file.root.psi_r_2.read()
     dr_inf_dmu      = h5file.root.dr_inf_dmu.read()
     dr_inf_dsigma   = h5file.root.dr_inf_dsigma.read()
     dVm_dmu         = h5file.root.dV_mean_inf_dmu.read()
@@ -548,6 +554,25 @@ def run_spec2m(ext_signal, params, filename_h5,
 
     # initial values
     wm0 = params['wm_init'] if have_adapt else 0.
+    
+    if params['fp_v_init'] == 'delta':
+        # assuming vanishing ext. input variation, recurrency and and adaptation in the beginning
+        mu_init = mu_ext[0]
+        sigma_init = sig_ext[0]
+        psi_r_1_interp = scipy.interpolate.RectBivariateSpline(mu_tab, sig_tab, 
+                                                               psi_r_1, kx=1, ky=1)
+        psi_r_2_interp = scipy.interpolate.RectBivariateSpline(mu_tab, sig_tab, 
+                                                               psi_r_2, kx=1, ky=1)
+#        psi_r_1_init = psi_r_1_interp()...
+                                                               
+        # calculating projection coefficients
+        a1_0 = psi_r_1
+        
+        # initial values
+    else:
+        r0 = 0.
+        dr0 = 0.
+
 
     results = sim_spec2m(mu_ext,dmu_ext_dt,d2mu_ext_dt2,
                          sig_ext, dsig_ext2_dt,d2sig_ext2_dt2,steps,t,dt,

@@ -103,8 +103,7 @@ def network_sim(signal, params, rec = False, standalone_dir = cpp_default_dir):
     elif params['neuron_model'] == 'PIF':
         model_term = ''
     elif params['neuron_model'] == 'LIF':
-        raise NotImplementedError
-    # todo also include leaky integrate-and-fire neurons as params['neuron_model']='LIF'
+        model_term = '(EL - v) / taum'
     else:
         mes = 'The model "{}" has not been implemented yet. For options see params dict.'.format(params['neuron_model'])
         raise NotImplementedError(mes)

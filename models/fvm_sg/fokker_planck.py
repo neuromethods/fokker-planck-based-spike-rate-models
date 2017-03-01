@@ -49,9 +49,8 @@ class Grid(object):
         self.ib = np.argmin(np.abs(self.V_centers - self.V_r))
 # DRIFT COEFFICIENTS
 @njit
-def get_v_numba(L, Vi, DT, EL, VT, taum, mu, EIF = True, tol = 10e-15):
-    '''drift coeffs for EIF/PIF model, depending on EIF = True/False'''
-    # todo: implement LIF
+def get_v_numba(L, Vi, DT, EL, VT, taum, mu, EIF = True, LIF = False, tol = 10e-15):
+    '''drift coeffs for EIF/LIF/PIF model, depending on EIF = True/False'''
     # EIF model
     drift = np.empty(L)
     if EIF:
@@ -60,6 +59,11 @@ def get_v_numba(L, Vi, DT, EL, VT, taum, mu, EIF = True, tol = 10e-15):
             if abs(drift[i])<tol:
                 drift[i] = tol
     # PIF model
+    elif LIF:
+        for i in xrange(L):
+            drift[i] = (EL - Vi[i]) / taum + mu
+            if abs(drift[i])<tol:
+                drift[i] = tol
     else:
         for i in xrange(L):
             drift[i] = mu
@@ -74,6 +78,7 @@ def get_v(grid, mu, params):
         '''returns the coefficients for the drift part of the flux for different neuron
          models. At the moment only for exponential-integrate-and-fire (EIF)
           and perfect-integrate-and-fire (PIF) '''
+          # TODO add LIF (currently only in get_v_numba implemented)
         Vi = grid.V_interfaces
         if params['neuron_model'] == 'EIF':
             EL = params['EL']
@@ -185,7 +190,7 @@ def sim_fp_sg(input, params, rec = False, save_times = []):
     Ew = params['Ew']
     tauw = params['tauw']
     EIF_model = True if params['neuron_model'] == 'EIF' else False
-
+    LIF_model = True if params['neuron_model'] == 'LIF' else False
 
 
 
@@ -251,7 +256,7 @@ def sim_fp_sg(input, params, rec = False, save_times = []):
     # for completeness of the rates array calculate r_0 which correseponds to the initial
     # probability density p0 outside of the main integration loop
     v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT,
-                        taum, mu_ext[0], EIF = EIF_model)
+                        taum, mu_ext[0], EIF = EIF_model, LIF = LIF_model)
 
     D = (sigma_ext[0] ** 2) * 0.5
     r0 = (v[-1]*((1.+exp((-v[-1]*dV)/D))/(1.-exp((-v[-1]*dV)/D)))*p0[-1])
@@ -312,7 +317,7 @@ def sim_fp_sg(input, params, rec = False, save_times = []):
         mu_tot[n] = mu_syn[n] - wm[n]/C if have_adap else mu_syn[n]
 
         v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT,
-                        taum, mu_tot[n], EIF = EIF_model)
+                        taum, mu_tot[n], EIF = EIF_model, LIF = LIF_model)
         D = (sigma_tot[n] ** 2) * 0.5
 
 
@@ -382,6 +387,7 @@ def sim_fp_sg_save_P_over_Time(input, params):
     Ew = params['Ew']
     tauw = params['tauw']
     EIF_model = True if params['neuron_model'] == 'EIF' else False
+    LIF_model = True if params['neuron_model'] == 'LIF' else False
 
     # time domain
     runtime = params['runtime']
@@ -432,7 +438,7 @@ def sim_fp_sg_save_P_over_Time(input, params):
     mu_tot0 = mu_ext[0]
     sigma_tot0 = sigma_ext[0]
     v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT,
-                        taum, mu_tot0, EIF = EIF_model)
+                        taum, mu_tot0, EIF = EIF_model, LIF = LIF_model)
     D = (sigma_tot0 ** 2) * 0.5
     r0 = (v[-1]*((1.+exp((-v[-1]*dV)/D))/(1.-exp((-v[-1]*dV)/D)))*P0[-1])
     wm0 = params['wm_init']
@@ -475,7 +481,7 @@ def sim_fp_sg_save_P_over_Time(input, params):
         mu_tot[n] = mu_syn[n] - wm[n]/C if have_adap else mu_syn[n]
 
         v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT,
-                        taum, mu_tot[n], EIF = EIF_model)
+                        taum, mu_tot[n], EIF = EIF_model, LIF = LIF_model)
         D = (sigma_tot[n] ** 2) * 0.5
 
 
@@ -536,6 +542,7 @@ def sim_fp_sg_OLD(input, params, save_densities=None, FS=False, rec=False):
 
 
     EIF_model = True if params['neuron_model'] == 'EIF' else False
+    LIF_model = True if params['neuron_model'] == 'LIF' else False
     sqrt_dt = sqrt(dt)
     n_ref = int(tau / dt)
     dt_tauw = dt/tauw
@@ -653,7 +660,7 @@ def sim_fp_sg_OLD(input, params, save_densities=None, FS=False, rec=False):
         # drift and diffusion coeffs
         # the commented out function is slighty slower than its numba version below
         # v = get_v(grid, mu_tot[n], params)
-        v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT, taum, mu_tot[n] - wm[n]/C, EIF = EIF_model)
+        v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT, taum, mu_tot[n] - wm[n]/C, EIF = EIF_model, LIF = LIF_model)
         D = (sigma_tot[n] ** 2) * 0.5
 
 
