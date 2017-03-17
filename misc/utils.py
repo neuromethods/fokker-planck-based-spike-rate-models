@@ -195,7 +195,7 @@ def interpolate_xy(xi, yi, rangex, rangey):
         idx = -1
         distx = 0
     else:
-        for i in xrange(dimx):
+        for i in xrange(dimx-1):
             if rangex[i] <= xi < rangex[i+1]:
                 idx = i
                 distx = (xi-rangex[i])/(rangex[i+1]-rangex[i])
@@ -206,7 +206,7 @@ def interpolate_xy(xi, yi, rangex, rangey):
         idy = -1
         disty = 0
     else:
-        for i in xrange(dimy):
+        for i in xrange(dimy-1):
             if rangey[i] <= yi < rangey[i+1]:
                 idy = i
                 disty = (yi-rangey[i])/(rangey[i+1]-rangey[i])
