@@ -24,7 +24,7 @@ compute_quantities = False
 save_rate_mod = False
 save_EIF_output = False
 save_quantities = False
-plot_filters = True
+plot_filters = False
 plot_quantities = True
 
 

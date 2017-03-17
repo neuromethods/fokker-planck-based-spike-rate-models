@@ -853,16 +853,23 @@ def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot,
                 plt.title('$r_{\infty}$', fontsize=14)
                 plt.ylabel('[kHz]', fontsize=12)
                 plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
- 
-                
-        if 'V_mean_ss' in quantity_names:
+            # Temp: check log of r_ss (for GLM purposes)    
             plt.subplot(1, 6, 2, sharex=ax1)              
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['V_mean_ss'][inds_mu_plot,j], 
+            plt.plot(mu_vals[inds_mu_plot], np.log(quantities_dict['r_ss'][inds_mu_plot,j]), 
                      label=siglabel, color=linecolor)
             if k_j==0:
-                plt.title('$\langle V \\rangle_{\infty}$', fontsize=14)
-                plt.ylabel('[mV]', fontsize=12)
+                plt.title('log $r_{\infty}$', fontsize=14)
+                plt.ylabel('[kHz]', fontsize=12)
                 plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
+                
+#        if 'V_mean_ss' in quantity_names:
+#            plt.subplot(1, 6, 2, sharex=ax1)              
+#            plt.plot(mu_vals[inds_mu_plot], quantities_dict['V_mean_ss'][inds_mu_plot,j], 
+#                     label=siglabel, color=linecolor)
+#            if k_j==0:
+#                plt.title('$\langle V \\rangle_{\infty}$', fontsize=14)
+#                plt.ylabel('[mV]', fontsize=12)
+#                plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
   
                 
         if 'tau_mu_exp' in quantity_names:
