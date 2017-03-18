@@ -1,0 +1,3 @@
+add spectralsolver here as methods_spectra.py
+
+change h5 file usages (name changed to _noref.h5)
