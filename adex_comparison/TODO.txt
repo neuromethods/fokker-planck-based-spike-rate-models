@@ -1,7 +1,7 @@
 Moritz:
-* add spectralsolver here as methods_spectra.py
-* change h5 file usage (name changed to _noref.h5)
-* maybe add ipython notebooks for better relation to paper?
+* ensure that preclac here works after renaming everyhting
+* then clean spectralsolver code
+* add ipython notebooks for better relation to paper? (see spectral_todo folder)
 
 Josef:
 * change h5 file usage (name changed to _noref.h5)

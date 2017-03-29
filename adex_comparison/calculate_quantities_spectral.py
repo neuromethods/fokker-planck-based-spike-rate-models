@@ -7,11 +7,11 @@
 
 import sys
 sys.path.insert(1, '..')
-from spectralsolver.spectralsolver import SpectralSolver, spectrum_enforce_complex_conjugation, \
-                                          quantities_postprocess, inner_prod
-from spectralsolver.plotting import plot_raw_spectrum_sigma, plot_raw_spectrum_eigvals, \
-                                    plot_quantities_eigvals, plot_quantities_real, \
-                                    plot_quantities_complex, plot_quantities_composed
+from methods_spectral import SpectralSolver, spectrum_enforce_complex_conjugation, \
+                                          quantities_postprocess, inner_prod, \
+                                          plot_raw_spectrum_sigma, plot_raw_spectrum_eigvals, \
+                                          plot_quantities_eigvals, plot_quantities_real, \
+                                          plot_quantities_complex, plot_quantities_composed
 from params import get_params
 import numpy as np
 import matplotlib.pyplot as plt
@@ -32,7 +32,7 @@ matplotlib.rcParams['text.usetex'] = True
 params = get_params()
 
 # input/output
-filename = 'quantities_spectral_noref.h5'
+filename = 'quantities_spectral.h5'
 #filename = 'quantities_spectral_noref_newflux.h5'
 
 folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
@@ -353,7 +353,7 @@ quantities_validation = {}
 if plot_validation:
     
     file_josef_ref = 'precalc05_int.mat' # Tref=1.4    
-    file_josef_noref = 'quantities_cascade_noref.h5' # Tref=0
+    file_josef_noref = 'quantities_cascade.h5' # Tref=0
     if abs(params['t_ref']-1.5) < 1e-10:
         mat_josef = scipy.io.loadmat(file_josef_ref)['presimdata'][0,0]
         
