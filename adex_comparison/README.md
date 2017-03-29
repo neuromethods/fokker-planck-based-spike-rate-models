@@ -4,6 +4,6 @@
 * cascade models: precalulate and plot the quantities: python2 calculate_quantities_cascade.py
 
 **Miscellaneous**:
-The parameters are defined in file params.py
-The numerical integration of the respective models are defined in: ../models/*
-Some helper functions reside in ../misc/utils.py
+* The parameters are defined in file params.py
+* The numerical integration of the respective models are defined in: ../models/*
+* Some helper functions reside in ../misc/utils.py
