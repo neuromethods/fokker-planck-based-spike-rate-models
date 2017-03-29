@@ -4,9 +4,9 @@
 
 Implementations of spike rate models derived from networks of adaptive exponential integrate-and-fire models:
 
-[1] Numerical solution of the mean-field Fokker-Planck (FP) equation using a finite volume method with Scharfetter-Gummel flux approximation.
-[2] Low-dimensional ordinary differential equations (ODE) derived from the spectral decomposition of the FP operator. 
-[3] Low-dimensional ODE based on a cascade of two linear filters and a nonlinearity determined from the FP equation and semi-analytically fitted.
+1. Numerical solution of the mean-field Fokker-Planck (FP) equation using a finite volume method with Scharfetter-Gummel flux approximation.
+2. Low-dimensional ordinary differential equations (ODE) derived from the spectral decomposition of the FP operator. 
+3. Low-dimensional ODE based on a cascade of two linear filters and a nonlinearity determined from the FP equation and semi-analytically fitted.
 
 Furthermore: precalculation codes for the (look-up) quantities involved in (2) and (3).
 
