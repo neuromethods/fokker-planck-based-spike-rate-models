@@ -1,3 +1,17 @@
-add spectralsolver here as methods_spectra.py
+Moritz:
+* add spectralsolver here as methods_spectra.py
+* change h5 file usage (name changed to _noref.h5)
+* maybe add ipython notebooks for better relation to paper?
 
-change h5 file usages (name changed to _noref.h5)
+Josef:
+* change h5 file usage (name changed to _noref.h5)
+* maybe add ipython notebooks for better relation to paper?
+* maybe show some sigma filters?
+
+Fabian:
+* rename spec2m to spec2 -- similarly for the simple version (spec2_simple)
+* make example scripts for situations as in fig1 and fig5 (e.g., runmodels.py runmodels_fig1.py / runmodels_fig5a.py / runmodels_fig5b.py)?
+
+All:
+* cleanup the code
+* improve documentation
