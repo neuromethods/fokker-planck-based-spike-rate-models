@@ -1,70 +1,78 @@
 # -*- coding: utf-8 -*-
-
-# script for computing the steady-state and the first order rate response 
-# of an exponential integrate-and-fire neuron subject to white noise input
-# to modulations of the input moments and associated quantities 
-# for linear-nonlinear cascade rate models, on a rectangle of baseline 
-# input moments (mu, sigma) -- written by Josef Ladenbauer in 2016 
-
-# use the following in IPython for qt plots: %matplotlib qt
+'''
+ script for computing the quantities required by the cascade-based spike rate 
+ models (LNexp, LNdos), i.e., steady-state spike rate and mean membrane voltage 
+ of an exponential/leaky integrate-and-fire neuron subject to white noise input 
+ as well as quantities derived from the first order rate response to modulations 
+ of the input moments, for a range of values for the baseline input moments 
+ (mu, sigma) -- written by Josef Ladenbauer in 2016 
+'''
 
 from params import get_params
-import cascade_precalc_functions as cf
+import methods_cascade as mc
 import numpy as np
+import multiprocessing
 from collections import OrderedDict
 import os
 
-folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
-output_filename = 'EIF_output_for_cascade_noref.h5'
-quantities_filename = 'quantities_cascade_noref.h5'
-load_EIF_output = False
-load_quantities = True
+folder = os.path.dirname(os.path.realpath(__file__))  # directory for the files
+# currently the same directory as for the script itself
+output_filename = 'EIF_output_for_cascade.h5'
+quantities_filename = 'quantities_cascade.h5'
+load_EIF_output = False  # True if EIF output has been computed and saved before
+load_quantities = False  # True if quantities have been computed and saved before
 compute_EIF_output = False
-compute_quantities = False
-save_rate_mod = False
+compute_quantities = False  # True -> needs compute_EIF_output set to True
+save_rate_mod = False  # True to save linear rate response functions, 
+                       # default is False to save memory
 save_EIF_output = False
 save_quantities = False
-plot_filters = False
+plot_filters = False  # True -> needs EIF_output set to True
 plot_quantities = True
 
+# TODO: incorporate adjustments from IF parameter estimation, especially in methods_cascade.py
+# e.g. fit_exponential_freqdom
 
 # PREPARING --------------------------------------------------------------------
-params = get_params()
+params = get_params()  # loads default parameter dictionary
 
-params['t_ref'] = 0.0
+params['t_ref'] = 0.0  # refractory period can be >0 (but not all reduced models 
+                       #                              in the paper support this)
 
-N_mu_vals = 241 #def.: 261 mu grid points -- from -1.5 to 5 with spacing 0.025 
-N_sigma_vals = 46 #def.: 46 #sigma grid points  -- from 0.5 to 5 with spacing 0.1
+# choose a plausible range of values for mu and sigma:
+# (which range is plausible depends on the neuron model parameter values)
+# e.g., for mu from -1 to 5 with spacing 0.025 mV/ms, 
+# for sigma from 0.5 to 5 with spacing 0.1 mV/sqrt(ms)  
+#N_mu_vals = 241  
+#N_sigma_vals = 46
+#mu_vals = np.linspace(-1.0, 5.0, N_mu_vals) 
+#sigma_vals = np.linspace(0.5, 5.0, N_sigma_vals) 
 
-d_freq = 0.25 # Hz, def.: 0.25
-d_V = 0.01 # mV note: Vr should be a grid point
+# or, for quicker results:
+mu_vals = np.arange(-1.0, 5.001, 0.1)    
+sigma_vals = np.arange(1.0, 3.501, 0.5)
+# note that sigma should not be too small, and for small values of sigma the 
+# lower limit of mu should be sufficiently large (to avoid large regions of 
+# vanishing spike rate activity, for which the numerical schemes are not optimized) 
 
-# For Tref=1.5 the following limits are reasonable:
-mu_vals = np.linspace(-1.0, 5.0, N_mu_vals)  #def.: np.linspace(-1.0, 5.0, N_mu_vals)
-sigma_vals = np.linspace(0.5, 5.0, N_sigma_vals)  #def.: np.linspace(0.5, 5.0, N_sigma_vals)
-# EIF_steadystate_and_linresponse results are not faithful for sigma<0.5 and 
-# for mu<-1 when sigma is small (sigma=0.5) 
-# --> this can be improved by using a slight refinement in the backwards integration:
-# using evaluations of V at k-1/2 instead of k (current version), which would match then 
-# with the spectral calculation scheme and (therefore) should work better for smaller mu 
+d_V = 0.005  # mV, membrane voltage spacing for calculations of steady-state and 
+             # first order rate response (note: Vr should be a grid point)
+d_freq = 0.25  # Hz, frequency spacing for calculation of first order rate response 
+f_max = 1000.0  # Hz
 
 # choose background mu and sigma values for filter visualization 
-#num_mus_plot = np.min([np.size(mu_vals),8])    
-#mus_plot = np.linspace(mu_vals[0], mu_vals[-1], num_mus_plot)    
-#mus_plot = [-0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0]
-# for paper: mu-mod [-0.5, 1.5, 3.0], sigma-mod [-0.5, 0.0, 1.5]
-mus_plot = [-0.5, 1.5, 3.0]
-#num_sigmas_plot = np.min([np.size(sigma_vals),4])  
-#sigmas_plot = np.linspace(sigma_vals[0], sigma_vals[-1], num_sigmas_plot)      
-sigmas_plot = [1.5, 3.5] #[1.2, 2.4, 3.6]  #[0.5, 1.5, 2.5, 3.5]    
+mus_plot = [-0.5, 1.5, 3.0]  # used in paper: [-0.5, 1.5, 3.0], [-0.5, 0.0, 1.5]    
+sigmas_plot = [1.5, 3.5]
 # choose background sigma values for quantity visualization        
-sigmas_quant_plot = np.arange(0.5, 4.501, 0.2) #[0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
-#sigmas_quant_plot = sigma_vals
+sigmas_quant_plot = np.arange(0.5, 4.501, 0.2) 
+#sigmas_quant_plot = sigma_vals  # all sigma values used
 
-# some more precalc parameters
-params['N_procs'] = 10 #multiprocessing.cpu_count() # no of parallel processes (not used in calc_cascade_quantities)
+# some more pre-calculation parameters
+params['N_procs'] = int(3*multiprocessing.cpu_count()/4.0)  # number of parallel 
+# processes, but note that multiprocessing is only used for >1 sigma value
+
 params['V_vals'] = np.arange(params['Vlb'],params['Vcut']+d_V/2,d_V)
-params['freq_vals'] = np.arange(d_freq, 1000+d_freq/2, d_freq)/1000  # kHz
+params['freq_vals'] = np.arange(d_freq, f_max+d_freq/2, d_freq)/1000  # kHz
 params['d_mu'] = 1e-5 # mV/ms
 params['d_sigma'] = 1e-5 # mV/sqrt(ms)
 
@@ -73,75 +81,65 @@ LN_quantities_dict = OrderedDict()
 
 EIF_output_names = ['r_ss', 'dr_ss_dmu', 'dr_ss_dsigma', 'V_mean_ss',
                     'r1_mumod', 'r1_sigmamod', 
-                    #'peak_abs_r1_mumod', 'f_peak_abs_r1_mumod',  #not needed and not implemented a.t.m.
                     'peak_real_r1_mumod', 'f_peak_real_r1_mumod', 
                     'peak_imag_r1_mumod', 'f_peak_imag_r1_mumod']
-                    #'peak_real_r1_sigmamod', 'f_peak_real_r1_sigmamod',  #not needed
-                    #'peak_imag_r1_sigmamod', 'f_peak_imag_r1_sigmamod']  #not needed
+
 LN_quantity_names = ['r_ss', 'V_mean_ss', 
                      'tau_mu_exp', 'tau_sigma_exp',
                      'tau_mu_dosc', 'f0_mu_dosc']
-                     #'tau_sigma_dosc', 'f0_sigma_dosc']  #not needed
-                     #'B_mu_bedosc', 'tau1_mu_bedosc', 'tau2_mu_bedosc', 'f0_mu_bedosc']  #not needed
 
-plot_EIF_output_names = ['r1_mumod', 'ifft_r1_mumod'] #'r1_sigmamod', 'ifft_r1_sigmamod'                     
+plot_EIF_output_names = ['r1_mumod', 'ifft_r1_mumod', 
+                         'r1_sigmamod', 'ifft_r1_sigmamod']
 plot_quantitiy_names =  ['r_ss', 'V_mean_ss',
                          'tau_mu_exp', 'tau_sigma_exp',
                          'tau_mu_dosc', 'f0_mu_dosc']
-                         #'tau_sigma_dosc', 'f0_sigma_dosc']  #not needed
-                         #'B_mu_bedosc', 'tau1_mu_bedosc', 'tau2_mu_bedosc', 'f0_mu_bedosc']  #not needed
 
 if __name__ == '__main__':
 
-    # LOADING ----------------------------------------------------------------------
+    # LOADING ------------------------------------------------------------------
     if load_EIF_output:
-        cf.load(folder+'/'+output_filename, EIF_output_dict,
+        mc.load(folder+'/'+output_filename, EIF_output_dict,
                 EIF_output_names + ['mu_vals', 'sigma_vals', 'freq_vals'], params)
-        # optional shortcuts
+        # optional shortcuts:
         mu_vals = EIF_output_dict['mu_vals']
         sigma_vals = EIF_output_dict['sigma_vals']
         freq_vals = EIF_output_dict['freq_vals']       
      
     if load_quantities:
-        cf.load(folder+'/'+quantities_filename, LN_quantities_dict,
+        mc.load(folder+'/'+quantities_filename, LN_quantities_dict,
                 LN_quantity_names + ['mu_vals', 'sigma_vals', 'freq_vals'], params)
-        # optional shortcuts
+        # optional shortcuts:
         mu_vals = LN_quantities_dict['mu_vals']
         sigma_vals = LN_quantities_dict['sigma_vals']
         freq_vals = LN_quantities_dict['freq_vals'] 
     
-        #print params['t_ref']  #TEMP
     
-    # COMPUTING --------------------------------------------------------------------
-    # calculate all mu_vals per process and opt for not storing rate responses (filters)
-    # in order to save memory!  
+    # COMPUTING ----------------------------------------------------------------
     if compute_EIF_output and compute_quantities:
-        EIF_output_dict, LN_quantities_dict = cf.calc_EIF_output_and_cascade_quants(
-                                                 mu_vals, sigma_vals, params, 
-                                                 EIF_output_dict, EIF_output_names, save_rate_mod,
-                                                 LN_quantities_dict, LN_quantity_names)                                                                                                        
-    # takes 40 min. for default mu,sigma,freq grid and N_procs=8 (risha)
-    # takes 1 h for default mu,sigma,freq grid and N_procs=10 (merope)
-    # takes ~125 min. for default mu,sigma,freq grid and N_procs=2 (lenovo laptop)                                             
+        EIF_output_dict, LN_quantities_dict = \
+            mc.calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params, 
+                                                  EIF_output_dict, EIF_output_names, 
+                                                  save_rate_mod, LN_quantities_dict, 
+                                                  LN_quantity_names)                                          
                                                  
-    # SAVING -----------------------------------------------------------------------                                   
+    # SAVING -------------------------------------------------------------------                             
     if save_EIF_output:
-        cf.save(folder+'/'+output_filename, EIF_output_dict, params) 
+        mc.save(folder+'/'+output_filename, EIF_output_dict, params) 
         print('saving EIF output done')
         
     if save_quantities:
-        cf.save(folder+'/'+quantities_filename, LN_quantities_dict, params) 
+        mc.save(folder+'/'+quantities_filename, LN_quantities_dict, params) 
         print('saving LN quantities done')
          
-    # PLOTTING ---------------------------------------------------------------------
+    # PLOTTING -----------------------------------------------------------------
     if plot_filters:
         recalc_filters = True
-        cf.plot_filters(EIF_output_dict, LN_quantities_dict, plot_EIF_output_names, 
+        mc.plot_filters(EIF_output_dict, LN_quantities_dict, plot_EIF_output_names, 
                         params, mus_plot, sigmas_plot, recalc_filters)
         
     if plot_quantities: 
-    #    cf.plot_quantities(LN_quantities_dict, plot_quantitiy_names, sigmas_quant_plot)
-        cf.plot_quantities_forpaper(LN_quantities_dict, plot_quantitiy_names, 
+        #mc.plot_quantities(LN_quantities_dict, plot_quantitiy_names, sigmas_quant_plot)
+        mc.plot_quantities_forpaper(LN_quantities_dict, plot_quantitiy_names, 
                                     sigmas_quant_plot, mus_plot, sigmas_plot)
     
 

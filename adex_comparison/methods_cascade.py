@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
-
-# functions to calculate and plot the quantities required by the LN cascade models, 
-# including functions to compute the steady-state and the first order rate response 
-# of an exponential integrate-and-fire neuron subject to white noise input
-# to modulations of the input moments -- written by Josef Ladenbauer in 2016 
+'''
+ functions to calculate and plot the quantities required by the LN cascade models, 
+ including functions to compute the steady-state and the first order rate response 
+ of an exponential/leaky integrate-and-fire neuron subject to white noise input
+ (and modulations of the input moments) -- written by Josef Ladenbauer in 2016 
+'''
 
 import numpy as np
 import scipy.integrate
@@ -16,6 +17,7 @@ import tables
 from warnings import warn
 import matplotlib.pyplot as plt
 #import matplotlib.colors as colors
+
 
 def EIF_steadystate_and_linresponse(mu_vals, sigma_vals, params, EIF_output_dict, output_names):
     
@@ -82,6 +84,7 @@ def EIF_steadystate_and_linresponse(mu_vals, sigma_vals, params, EIF_output_dict
     return EIF_output_dict
     
     
+
 def calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params, 
                                        EIF_output_dict, output_names, save_rate_mod,
                                        LN_quantities_dict, quantity_names):
@@ -116,7 +119,6 @@ def calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params,
         LN_quantities_dict[n] = np.zeros((N_mu_vals, N_sigma_vals))
                 
 
-                
     arg_tuple_list = [(isig, sigma_vals[isig], mu_vals, params, output_names,
                        quantity_names, save_rate_mod) for isig in range(N_sigma_vals)]    
                       
@@ -161,6 +163,7 @@ def calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params,
       
     return EIF_output_dict, LN_quantities_dict
     
+
 
 def output_and_quantities_given_sigma_wrapper(arg_tuple):
     isig, sigma, mu_vals, params, output_names, quantity_names, save_rate_mod = arg_tuple
@@ -277,7 +280,11 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
             w_vec = 2*np.pi*params['freq_vals']
             # sigma1 = 1e-4;  #inhom for sigma^2 modulation = -sigma21*dp_ssdV/2  
             # sigma1 = params['d_sigma'], consistently with use of r_ss_dsigma_ref (not implemented a.t.m.)
-            driftterm = ( mu + ( EL-V_vec+DeltaT*np.exp((V_vec-VT)/DeltaT) )/taum ) * p_ss
+            if DeltaT>0:
+                Psi = DeltaT*np.exp((V_vec-VT)/DeltaT)
+            else:
+                Psi = 0.0*V_vec   
+            driftterm = ( mu + ( EL-V_vec+Psi )/taum ) * p_ss
             inhom = params['d_sigma'] * 2/sigma * (q_ss - driftterm)  # inhom = -sigma*sigma1*dp_ssdV
             r1sig_vec = EIF_lin_rate_response_frange(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
                                                      Tref, mu, sigma, inhom, w_vec)
@@ -305,8 +312,12 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
         if 'tau_mu_exp' in quantity_names:
             # shortcut for normalized r1_mumod in for-loop
             r1_mumod_f0 = dr_ss_dmu 
+            # It seems that for some parametrizations using the derivative dr_ss_dmu
+            # for f=0 (as we should do in theory) introduces errors -- #TODO: 
+            # need more robust computation of derivative perhaps
             # real value equal to the time-integral of the filter from 0 to inf
-            r1_mumod_normalized = r1mu_vec/params['d_mu'] /r1_mumod_f0
+            r1_mumod_normalized = r1mu_vec/r1mu_vec[0] #r1mu_vec/params['d_mu'] /r1_mumod_f0
+            #print r1_mumod_normalized[0]
             init_val = 1.0 #ms
             tau = fit_exponential_freqdom(f, r1_mumod_normalized, init_val)
             res_given_sigma_dict['tau_mu_exp'][imu] = tau
@@ -343,7 +354,8 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
             res_given_sigma_dict['f0_mu_dosc'][imu] = f0
             init_vals =[tau, f0]
     
-        # additional fitting optios in alternative version (below)    
+        # additional fitting options in alternative version (below)    
+        #print 'calculation for mu =', mu, 'done'  
     #print 'another mu curve done'
     return isig, res_given_sigma_dict
 
@@ -437,7 +449,11 @@ def EIF_ss_and_linresp_given_musigma_wrapper(arg_tuple):
         w_vec = 2*np.pi*params['freq_vals']
         # sigma1 = 1e-4;  #inhom for sigma^2 modulation = -sigma21*dp_ssdV/2  
         # sigma1 = params['d_sigma'], consistently with use of r_ss_dsigma_ref (not implemented a.t.m.)
-        driftterm = ( mu + ( EL-V_vec+DeltaT*np.exp((V_vec-VT)/DeltaT) )/taum ) * p_ss
+        if DeltaT>0:
+            Psi = DeltaT*np.exp((V_vec-VT)/DeltaT)
+        else:
+            Psi = 0.0*V_vec   
+        driftterm = ( mu + ( EL-V_vec+Psi )/taum ) * p_ss
         inhom = params['d_sigma'] * 2/sigma * (q_ss - driftterm)  # inhom = -sigma*sigma1*dp_ssdV
         r1sig_vec = EIF_lin_rate_response_frange(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
                                                  Tref, mu, sigma, inhom, w_vec)
@@ -463,13 +479,25 @@ def EIF_ss_and_linresp_given_musigma_wrapper(arg_tuple):
     return imu, isig, res_given_musigma_dict
     
     
+# TODO: include as comment perhaps
+# a slight refinement in the backwards integration:
+# using evaluations of V at k-1/2 instead of k (current version), which would match then 
+# with the spectral calculation scheme and (therefore) should work better for smaller mu 
+
+# larger values of d_V may be chosen when using an improved integration scheme in
+# steady-state and rate-response code (based on Magnus expansion, see MA slide) 
+
 @numba.njit
 def EIF_steady_state(V_vec, kr, taum, EL, Vr, VT, DeltaT, mu, sigma):
     dV = V_vec[1]-V_vec[0]
     sig2term = 2.0/sigma**2
     n = len(V_vec)
     p_ss = np.zeros(n);  q_ss = np.ones(n);
-    F = sig2term*( ( V_vec-EL-DeltaT*np.exp((V_vec-VT)/DeltaT) )/taum - mu ) 
+    if DeltaT>0:
+        Psi = DeltaT*np.exp((V_vec-VT)/DeltaT)
+    else:
+        Psi = 0.0*V_vec
+    F = sig2term*( ( V_vec-EL-Psi )/taum - mu ) 
     A = np.exp(dV*F)
     F_dummy = F.copy()
     F_dummy[F_dummy==0.0] = 1.0
@@ -496,8 +524,12 @@ def EIF_lin_rate_response_frange(V_vec, kr, taum, EL, Vr, VT, DeltaT, Tref,
     dV = V_vec[1]-V_vec[0]
     sig2term = 2.0/sigma**2
     n = len(V_vec)
-    r1_vec = 1j*np.ones(len(w_vec)) 
-    F = sig2term*( ( V_vec-EL-DeltaT*np.exp((V_vec-VT)/DeltaT) )/taum - mu ) 
+    r1_vec = 1j*np.ones(len(w_vec))    
+    if DeltaT>0:
+        Psi = DeltaT*np.exp((V_vec-VT)/DeltaT)
+    else:
+        Psi = 0.0*V_vec
+    F = sig2term*( ( V_vec-EL-Psi )/taum - mu )
     A = np.exp(dV*F)
     F_dummy = F.copy()
     F_dummy[F_dummy==0.0] = 1.0
@@ -521,7 +553,7 @@ def EIF_lin_rate_response_frange(V_vec, kr, taum, EL, Vr, VT, DeltaT, Tref,
             q1b += fw*p1b
             q1a = q1a_new;  p1a = p1a_new;  p1b = p1b_new;   
         r1_vec[iw] = -q1b/q1a
-    return r1_vec    
+    return r1_vec   
     
  
 def EIF_find_lin_response_peak(w_vec, r1_vec, r1_f0, V_vec, kr, taum, EL, Vr, VT, 
@@ -585,7 +617,11 @@ def EIF_lin_rate_response(V_vec, kr, taum, EL, Vr, VT, DeltaT, Tref,
     q1a = 1.0 + 0.0*1j;  p1a = 0.0*1j;  q1b = 0.0*1j;  p1b = 0.0*1j;
     fw = dV*1j*w
     refterm = np.exp(-1j*w*Tref)
-    F = sig2term*( ( V_vec-EL-DeltaT*np.exp((V_vec-VT)/DeltaT) )/taum - mu ) 
+    if DeltaT>0:
+        Psi = DeltaT*np.exp((V_vec-VT)/DeltaT)
+    else:
+        Psi = 0.0*V_vec
+    F = sig2term*( ( V_vec-EL-Psi )/taum - mu ) 
     A = np.exp(dV*F)
     F_dummy = F.copy()
     F_dummy[F_dummy==0.0] = 1.0
@@ -613,22 +649,42 @@ def fit_exponential_freqdom(f, r1_mod_normalized, init_val):
     # Fitting exponential function A*exp(-t/tau) to normalized rate response in Fourier space:
     # A*tau / (1 + 1i*2*pi*f*tau)  f in kHz, tau in ms 
     # with A = 1/tau to guarantee equality at freq=0
-
     tau_lb = 0.001  #ms 
-    tau_ub = 300.0  #ms
-#    sol = scipy.optimize.minimize_scalar(exp_mean_sq_dist, args=(f, r1_mod_normalized), 
-#                                         bounds=(tau_lb, tau_ub), method='bounded', 
-#                                         options={'disp':True, 'maxiter':1000, 'xatol':1e-3})
-#    tau = sol.x
-    ydata = np.concatenate([np.real(r1_mod_normalized), np.imag(r1_mod_normalized)])
-    tau, _ = scipy.optimize.curve_fit(exponential_fdom, f, ydata, p0=init_val, 
-                                      bounds=(tau_lb, tau_ub)) 
+    tau_ub = 100.0  #ms
+#    ydata = np.concatenate([np.real(r1_mod_normalized), np.imag(r1_mod_normalized)])
+#    tau, _ = scipy.optimize.curve_fit(exponential_fdom, f, ydata, p0=init_val, 
+#                                      bounds=(tau_lb, tau_ub)) 
     # curve_fit is a bit slower, but works better [for some reason] for sigma-mod 
     # when drdsigma is close to 0 but still pos.:
     # in this case the other method yields tau_max which may be a local optimum
     # To check this we could use a global optimization method using numba for this
     # simple 1-dim. optim. 
-    # TODO: numba based global optim. (optional, probably faster)                                  
+    # TODO: numba based coarse global optim. for good starting point, then 
+    # refinement using scipy.optimize.minimize_scalar (bounded)  
+    
+    tau_step = 1.0  #ms
+    tau_vals = np.arange(tau_lb, tau_ub, tau_step)
+    errors = np.zeros_like(tau_vals)
+    for i, tau in enumerate(tau_vals):
+        errors[i] = exp_mean_sq_dist(tau, f, r1_mod_normalized)
+    idx = np.argmin(errors)
+    #tau = tau_vals[idx] 
+    # refine:
+    if idx<len(tau_vals)-1:
+        tau_ub = tau_vals[idx+1]
+    if idx>0:
+        tau_lb = tau_vals[idx-1]
+    tau_step = 0.01  #ms
+    tau_vals = np.arange(tau_lb, tau_ub, tau_step)
+    errors = np.zeros_like(tau_vals)
+    for i, tau in enumerate(tau_vals):
+        errors[i] = exp_mean_sq_dist(tau, f, r1_mod_normalized)
+    idx = np.argmin(errors)
+    tau = tau_vals[idx]    
+#    sol = scipy.optimize.minimize_scalar(exp_mean_sq_dist, args=(f, r1_mod_normalized), 
+#                                         bounds=(tau_lb, tau_ub), method='bounded', 
+#                                         options={'disp':True, 'maxiter':500, 'xatol':1e-3})
+#    tau = sol.x                            
     return tau
     
 def exp_mean_sq_dist(tau, *args):  # not used a.t.m.
@@ -830,87 +886,60 @@ def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot,
     mu_lim = [-1, 4]
     inds_mu_plot = [i for i in range(len(mu_vals)) if mu_lim[0] <= mu_vals[i] <= mu_lim[1]]
     inds_sigma_plot = [np.argmin(np.abs(sigma_vals-sig)) for sig in sigmas_quant_plot]
-#    mu_plot_ind = np.argmin(np.abs(mu_vals-mus_plot[0]))
+    mu_plot_ind = np.argmin(np.abs(mu_vals-mus_plot[0]))
     N_sigma = len(inds_sigma_plot)    
     
     for k_j, j in enumerate(inds_sigma_plot):
         # color    
-        rgb = [0, float(k_j)/(N_sigma-1), 0]
+        rgb = [0, float(k_j+1)/(N_sigma), 0]
         linecolor = rgb
-        # labels
-        if k_j in [0, N_sigma//2, N_sigma-1]:
-            siglabel = '$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[j])
-                       
-        else:
-            siglabel = None
-                
-        if 'r_ss' in quantity_names:     
-            ax1 = plt.subplot(1, 6, 1)
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['r_ss'][inds_mu_plot,j], 
-                     label=siglabel, color=linecolor)
+        
+        if 'r_ss' in quantity_names:
+            ax1 = plt.subplot(1, 4, 1)
+            # labels
+            if k_j in [0, N_sigma//2, N_sigma-1]:
+                siglabel = '$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[j])
+                           
+            else:
+                siglabel = None
     
-            if k_j==0:
-                plt.title('$r_{\infty}$', fontsize=14)
-                plt.ylabel('[kHz]', fontsize=12)
-                plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
-            # Temp: check log of r_ss (for GLM purposes)    
-            plt.subplot(1, 6, 2, sharex=ax1)              
-            plt.plot(mu_vals[inds_mu_plot], np.log(quantities_dict['r_ss'][inds_mu_plot,j]), 
+            plt.plot(mu_vals[inds_mu_plot], quantities_dict['r_ss'][inds_mu_plot,j],
                      label=siglabel, color=linecolor)
+            for l in range(len(sigmas_plot)): 
+                if np.round(sigmas_plot[l],2)==np.round(sigma_vals[j],2):
+                    plt.plot(mus_plot[0], quantities_dict['tau_mu_exp'][mu_plot_ind,j],
+                    'o', color=linecolor) #, markeredgewidth=0.0)
             if k_j==0:
-                plt.title('log $r_{\infty}$', fontsize=14)
+                plt.title(r'$r_{\infty}$', fontsize=14)
                 plt.ylabel('[kHz]', fontsize=12)
-                plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
-                
-#        if 'V_mean_ss' in quantity_names:
-#            plt.subplot(1, 6, 2, sharex=ax1)              
-#            plt.plot(mu_vals[inds_mu_plot], quantities_dict['V_mean_ss'][inds_mu_plot,j], 
-#                     label=siglabel, color=linecolor)
-#            if k_j==0:
-#                plt.title('$\langle V \\rangle_{\infty}$', fontsize=14)
-#                plt.ylabel('[mV]', fontsize=12)
-#                plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
-  
-                
-        if 'tau_mu_exp' in quantity_names:
-            plt.subplot(1, 6, 3, sharex=ax1)
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau_mu_exp'][inds_mu_plot,j],
-                     label=siglabel, color=linecolor)
-#            for l in range(len(sigmas_plot)): 
-#                if np.round(sigmas_plot[l],2)==np.round(sigma_vals[j],2):
-#                    plt.plot(mus_plot[0], quantities_dict['tau_mu_exp'][mu_plot_ind,j],
-#                    'o', color=linecolor) #, markeredgewidth=0.0)
-            if k_j==0:
-                plt.title(r'$\tau_{\mu}$', fontsize=14)
-                plt.ylabel('[ms]', fontsize=12)
                 plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
                 #plt.ylim([-1, 46])
             
                                
-        if 'tau_sigma_exp' in quantity_names:
-            plt.subplot(1, 6, 4, sharex=ax1)
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau_sigma_exp'][inds_mu_plot,j],
+        if 'V_mean_ss' in quantity_names:
+            plt.subplot(1, 4, 2, sharex=ax1)
+            plt.plot(mu_vals[inds_mu_plot], quantities_dict['V_mean_ss'][inds_mu_plot,j],
                      label=siglabel, color=linecolor)
-#            for l in range(len(sigmas_plot)): 
-#                if np.round(sigmas_plot[l],2)==np.round(sigma_vals[j],2):
-#                    plt.plot(mus_plot[0], quantities_dict['tau_sigma_exp'][mu_plot_ind,j],
-#                    'o', color=linecolor) #, markeredgewidth=0.0)
+            for l in range(len(sigmas_plot)): 
+                if np.round(sigmas_plot[l],2)==np.round(sigma_vals[j],2):
+                    plt.plot(mus_plot[0], quantities_dict['tau_sigma_exp'][mu_plot_ind,j],
+                    'o', color=linecolor) #, markeredgewidth=0.0)
             if k_j==0:
-                plt.title(r'$\tau_{\sigma}$', fontsize=14)
-                plt.ylabel('[ms]', fontsize=12)
+                plt.title('$\langle V \\rangle_{\infty}$', fontsize=14)
+                plt.ylabel('[mV]', fontsize=12)
                 plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
                 #plt.ylim([-1, 46])
             if k_j==N_sigma-1:
                 plt.legend(loc='best')
         
         if 'tau_mu_dosc' in quantity_names:
-            plt.subplot(1, 6, 5, sharex=ax1)      
+            plt.subplot(1, 4, 3, sharex=ax1)           
             plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau_mu_dosc'][inds_mu_plot,j], 
                      label=siglabel, color=linecolor)
-#            for l in range(len(sigmas_plot)): 
-#                if np.round(sigmas_plot[l],2)==np.round(sigma_vals[j],2):
-#                    plt.plot(mus_plot[0], quantities_dict['tau_mu_dosc'][mu_plot_ind,j], 
-#                    'o', color=linecolor) #, markeredgewidth=0.0)
+            for l in range(len(sigmas_plot)): 
+                if np.round(sigmas_plot[l],2)==np.round(sigma_vals[j],2):
+                    plt.plot(mus_plot[0], quantities_dict['tau_mu_dosc'][mu_plot_ind,j], 
+                    'o', color=linecolor) #, markeredgewidth=0.0)
             if k_j==0:
                 plt.title(r'$\tau$', fontsize=14)
                 plt.ylabel('[ms]', fontsize=12)
@@ -918,13 +947,13 @@ def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot,
                 plt.ylim([-1, 46])
         
         if 'f0_mu_dosc' in quantity_names:
-            plt.subplot(1, 6, 6, sharex=ax1)                  
+            plt.subplot(1, 4, 4, sharex=ax1)                       
             plt.plot(mu_vals[inds_mu_plot], quantities_dict['f0_mu_dosc'][inds_mu_plot,j], 
                      label=siglabel, color=linecolor)
-#            for l in range(len(sigmas_plot)): 
-#                if np.round(sigmas_plot[l],2)==np.round(sigma_vals[j],2):
-#                    plt.plot(mus_plot[0], quantities_dict['f0_mu_dosc'][mu_plot_ind,j], 
-#                    'o', color=linecolor) #, markeredgewidth=0.0)  #markeredgecolor=...,
+            for l in range(len(sigmas_plot)): 
+                if np.round(sigmas_plot[l],2)==np.round(sigma_vals[j],2):
+                    plt.plot(mus_plot[0], quantities_dict['f0_mu_dosc'][mu_plot_ind,j], 
+                    'o', color=linecolor) #, markeredgewidth=0.0)  #markeredgecolor=...,
             if k_j==0:
                 plt.title(r'$\omega/2\pi$', fontsize=14)
                 plt.ylabel('[kHz]', fontsize=12)
@@ -949,7 +978,7 @@ def plot_quantities(quantities_dict, quantity_names, sigmas_plot):
     
     for k_j, j in enumerate(inds_sigma_plot):
         # color    
-        rgb = [0, float(k_j)/(N_sigma-1), 0]
+        rgb = [0, float(k_j+1)/(N_sigma), 0]
         linecolor = rgb
         
         if 'r_ss' in quantity_names:
@@ -1022,41 +1051,42 @@ def plot_quantities(quantities_dict, quantity_names, sigmas_plot):
                 plt.ylabel(r'$\tilde{f}$ [kHz]')
                 plt.xlabel('$\mu$ [mV/ms]')
     
-    plt.figure()
-    plt.suptitle('LN quantities for bexdox variant')
-    for k_j, j in enumerate(inds_sigma_plot):
-        # color    
-        rgb = [0, float(k_j)/(N_sigma-1), 0]
-        linecolor = rgb
-        if 'B_mu_bedosc' in quantity_names:
-            ax2 = plt.subplot(2, 2, 2)              
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['B_mu_bedosc'][inds_mu_plot,j], 
-                     label=siglabel, color=linecolor)
-            if k_j==0:
-                plt.ylabel('$B$ [...]')
+    if 'tau1_mu_bedosc' in quantity_names:
+        plt.figure()
+        plt.suptitle('LN quantities for bexdox variant')
+        for k_j, j in enumerate(inds_sigma_plot):
+            # color    
+            rgb = [0, float(k_j+1)/(N_sigma), 0]
+            linecolor = rgb
+            if 'B_mu_bedosc' in quantity_names:
+                ax2 = plt.subplot(2, 2, 2)              
+                plt.plot(mu_vals[inds_mu_plot], quantities_dict['B_mu_bedosc'][inds_mu_plot,j], 
+                         label=siglabel, color=linecolor)
+                if k_j==0:
+                    plt.ylabel('$B$ [...]')
+                
+            if 'tau1_mu_bedosc' in quantity_names:
+                plt.subplot(2, 2, 1, sharex=ax2)
+                plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau1_mu_bedosc'][inds_mu_plot,j], 
+                         label=siglabel, color=linecolor)
+                if k_j==0:
+                    plt.ylabel(r'$\tau_1$ [ms]')
+                
+            if 'tau2_mu_bedosc' in quantity_names:
+                plt.subplot(2, 2, 3, sharex=ax2)
+                plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau2_mu_bedosc'][inds_mu_plot,j], 
+                         label=siglabel, color=linecolor)
+                if k_j==0:
+                    plt.ylabel(r'$\tau_2$ [ms]')
+                    plt.xlabel('$\mu$ [mV/ms]')
             
-        if 'tau1_mu_bedosc' in quantity_names:
-            plt.subplot(2, 2, 1, sharex=ax2)
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau1_mu_bedosc'][inds_mu_plot,j], 
-                     label=siglabel, color=linecolor)
-            if k_j==0:
-                plt.ylabel(r'$\tau_1$ [ms]')
-            
-        if 'tau2_mu_bedosc' in quantity_names:
-            plt.subplot(2, 2, 3, sharex=ax2)
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau2_mu_bedosc'][inds_mu_plot,j], 
-                     label=siglabel, color=linecolor)
-            if k_j==0:
-                plt.ylabel(r'$\tau_2$ [ms]')
-                plt.xlabel('$\mu$ [mV/ms]')
-        
-        if 'f0_mu_bedosc' in quantity_names:
-            plt.subplot(2, 2, 4, sharex=ax2)           
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['f0_mu_bedosc'][inds_mu_plot,j], 
-                     label=siglabel, color=linecolor)
-            if k_j==0:
-                plt.ylabel(r'$f_0$ [kHz]')
-                plt.xlabel('$\mu$ [mV/ms]')
+            if 'f0_mu_bedosc' in quantity_names:
+                plt.subplot(2, 2, 4, sharex=ax2)           
+                plt.plot(mu_vals[inds_mu_plot], quantities_dict['f0_mu_bedosc'][inds_mu_plot,j], 
+                         label=siglabel, color=linecolor)
+                if k_j==0:
+                    plt.ylabel(r'$f_0$ [kHz]')
+                    plt.xlabel('$\mu$ [mV/ms]')
     plt.show()
             
         
@@ -1073,8 +1103,6 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
        params_tmp['freq_vals'] = f_vals
        params_tmp['N_procs'] = 1
        mumod_tmp_dict = {};  sigmamod_tmp_dict = {}
-       drdmu_tmp_dict = {};  rss_tmp_dict = {}
-       drdsigma_tmp_dict = {}
        
     df = f_vals[1] - f_vals[0]
     if any(f_vals<0):
@@ -1099,45 +1127,30 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
     
     if 'r1_mumod' in output_names:
         plt.figure()
-        plt.suptitle('EIF rate response to $\mu$-modulation in in 1/V vs. Hz')
+        plt.suptitle('EIF rate response to $\mu$-modulation in in 1/V')
         for k_isig, isig in enumerate(inds_sigma_plot):        
             for k_imu, imu in enumerate(inds_mu_plot):           
                 plt.subplot(N_sigma,N_mu,k_isig*N_mu+k_imu+1)                
                 
-                # rate response (plot at the end)
-                if recalc_filters:
-                    tmp_dict = {};  tmp_output_names = ['r1_mumod','r_ss','dr_ss_dmu']
-                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
-                                                               [sigma_vals[isig]],
-                                                               params_tmp, tmp_dict,
-                                                               tmp_output_names)
-                    r1_mumod = tmp_dict['r1_mumod'][0,0,:]
-                    mumod_tmp_dict[imu,isig] = r1_mumod
-                    # scaling factor for rate response (rather than filter) fit:
-                    drdmu = tmp_dict['dr_ss_dmu'][0,0]
-                    drdmu_tmp_dict[imu,isig] = drdmu
-                    r_ss = tmp_dict['r_ss'][0,0]
-                    rss_tmp_dict[imu,isig] = r_ss
-                else:                               
-                    r1_mumod = output_dict['r1_mumod'][imu,isig,:]
-                    # scaling factor for rate response (rather than filter) fit:
-                    drdmu = output_dict['dr_ss_dmu'][imu,isig]
-                    r_ss = output_dict['r_ss'][imu,isig]
+                # scaling factor for rate response (rather than filter) fit:
+                drdmu = output_dict['dr_ss_dmu'][imu,isig]
+                # TODO: drdmu and r1_mumod[0] might not match in some cases:
+                # could visualize filters instead with time integral = 1 = 
+                # value of fourier transform at f=0
                 
                 # analytical exponential fit (using asymptotics)
-                tau = params['deltaT']*drdmu/r_ss
-                A = 1.0/tau
-                exp_fit = drdmu * A*tau/(1.0 + 2*np.pi*1j*f_vals*tau)
-                plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(exp_fit[f_vals<=1]), 
-                           'c--', linewidth=1.5)
+                if params['DeltaT']>0:  #otherwise it makes no sense
+                    tau = params['DeltaT']*drdmu/output_dict['r_ss'][imu,isig]
+                    A = 1.0/tau
+                    exp_fit = drdmu * A*tau/(1.0 + 2*np.pi*1j*f_vals*tau)
+                    plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(exp_fit[f_vals<=1]), 'b--')
                     
                 # semi-analytical exponential fit
                 if 'tau_mu_exp' in quantities_dict.keys():
                     tau = quantities_dict['tau_mu_exp'][imu,isig]
                     A = 1.0/tau
                     exp_fit = drdmu * A*tau/(1.0 + 2*np.pi*1j*f_vals*tau)
-                    plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(exp_fit[f_vals<=1]), 
-                               'r', linewidth=1.5)                
+                    plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(exp_fit[f_vals<=1]), 'c')                
                 
                 # semi-analytical damped oscillator fit
                 if 'tau_mu_dosc' in quantities_dict.keys():
@@ -1147,8 +1160,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                     dosc_fit = drdmu * A*tau/2 * \
                                ( 1.0/(1.0 + 2*np.pi*1j*tau*(f_vals-f0)) + \
                                  1.0/(1.0 + 2*np.pi*1j*tau*(f_vals+f0)) )
-                    plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(dosc_fit[f_vals<=1]), 
-                               'm', linewidth=1.5)
+                    plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(dosc_fit[f_vals<=1]), 'm')
                                                 
                 # semi-analytical bi-exp, damped oscillator fit
                 if 'tau1_mu_bedosc' in quantities_dict.keys():
@@ -1162,7 +1174,17 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                                               1.0/(1.0 + 2*np.pi*1j*tau2*(f_vals+f0)) ) )
                     plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(bexdos_fit[f_vals<=1]), 'g')
 
-                # plot rate response
+                # rate response
+                if recalc_filters:
+                    tmp_dict = {};  tmp_output_name = ['r1_mumod']
+                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
+                                                               [sigma_vals[isig]],
+                                                               params_tmp, tmp_dict,
+                                                               tmp_output_name)
+                    r1_mumod = tmp_dict['r1_mumod'][0,0,:]
+                    mumod_tmp_dict[imu,isig] = r1_mumod
+                else:                               
+                    r1_mumod = output_dict['r1_mumod'][imu,isig,:]
                 plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(r1_mumod[f_vals<=1]), 
                            'k', linewidth=1.5)              
                 plt_min = np.min(1000*np.abs(r1_mumod[f_vals<=1]))
@@ -1173,39 +1195,48 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                     plt.ylabel('$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[isig]))
                 if k_isig==len(inds_sigma_plot)-1:    
                     plt.xlabel('$\mu={0:.3}$ [mV/ms]'.format(mu_vals[imu]))
+#                if count<=ncols
+#                  title('$|\hat{R}_{\mu}(f)|$','Interpreter','latex');
+#                end
+#                if mod(count,ncols)==1
+#                  ylabel(['$\sigma =$' num2str(presimdata.sigmarange(is))], ...
+#                          'Interpreter','latex');
+#                end
+#                if mod(count,ncols)==1 && count>ncols*(nrows-1)
+#                  ylabel(['$\sigma =$' num2str(presimdata.sigmarange(is)) ...
+#                          ' mV/$\sqrt{\mathrm{ms}}$'],'Interpreter','latex');
+#                end
+#                if count>ncols*(nrows-1)
+#                  xlabel(['$\mu =$' num2str(presimdata.Irange(iI)/taum)], ...
+#                          'Interpreter','latex');
+#                  set(gca,'xlim',[0 1000],'xtick',...
+#                    [1 10 100 1000],'YTickLabel',[]);   
+#                else
+#                  set(gca,'xlim',[0 1000],'xtick',...
+#                    [1 10 100 1000],'xticklabel',[],'yticklabel',[]);
+#                end
+#                if count>ncols*(nrows-1) && mod(count,ncols)==0
+#                  xlabel(['$\mu =$' num2str(presimdata.Irange(iI)/taum) ...
+#                          ' mV/ms'],'Interpreter','latex');  
+#                end
                 
     if 'r1_sigmamod' in output_names:
         plt.figure()
-        plt.suptitle('EIF rate response to $\sigma$-modulation in 1/(V*sqrt(ms)) vs. Hz')
+        plt.suptitle('EIF rate response to $\sigma$-modulation in 1/(V*sqrt(ms))')
         for k_isig, isig in enumerate(inds_sigma_plot):        
             for k_imu, imu in enumerate(inds_mu_plot):           
                 plt.subplot(N_sigma,N_mu,k_isig*N_mu+k_imu+1)                
                 
-                # rate response (plotting at the end)
-                if recalc_filters:
-                    tmp_dict = {};  tmp_output_names = ['r1_sigmamod','dr_ss_dsigma']
-                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
-                                                               [sigma_vals[isig]],
-                                                               params_tmp, tmp_dict,
-                                                               tmp_output_names)
-                    r1_sigmamod = tmp_dict['r1_sigmamod'][0,0,:] 
-                    sigmamod_tmp_dict[imu,isig] = r1_sigmamod
-                    # scaling factor for rate response (rather than filter) fit:
-                    drdsigma = tmp_dict['dr_ss_dsigma'][0,0]
-                    drdsigma_tmp_dict[imu,isig] = drdsigma
-                else:                               
-                    r1_sigmamod = output_dict['r1_sigmamod'][imu,isig,:]    
-                    # scaling factor for rate response (rather than filter) fit:
-                    drdsigma = output_dict['dr_ss_dsigma'][imu,isig]
-                  
+                # scaling factor for rate response (rather than filter) fit:
+                drdsigma = output_dict['dr_ss_dsigma'][imu,isig]
+                   
                 # semi-analytical exponential fit
                 if 'tau_sigma_exp' in quantities_dict.keys():
                     if drdsigma>0:  # otherwise we use delta filter  
                         tau = quantities_dict['tau_sigma_exp'][imu,isig]
                         A = 1.0/tau
                         exp_fit = drdsigma * A*tau/(1.0 + 2*np.pi*1j*f_vals*tau)
-                        plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(exp_fit[f_vals<=1]), 
-                                   'r', linewidth=1.5)                
+                        plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(exp_fit[f_vals<=1]), 'c')                
                 
                 # semi-analytical damped oscillator fit
                 if 'tau_sigma_dosc' in quantities_dict.keys():
@@ -1216,49 +1247,49 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                         dosc_fit = drdsigma * A*tau/2 * \
                                    ( 1.0/(1.0 + 2*np.pi*1j*tau*(f_vals-f0)) + \
                                      1.0/(1.0 + 2*np.pi*1j*tau*(f_vals+f0)) )
-                        plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(dosc_fit[f_vals<=1]), 
-                                   'm', linewidth=1.5)
+                        plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(dosc_fit[f_vals<=1]), 'm')
 
-                # plot rate response              
-                plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(r1_sigmamod[f_vals<=1]), 
-                           'k', linewidth=1.5)
+                # rate response
+                if recalc_filters:
+                    tmp_dict = {};  tmp_output_name = ['r1_sigmamod']
+                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
+                                                               [sigma_vals[isig]],
+                                                               params_tmp, tmp_dict,
+                                                               tmp_output_name)
+                    r1_sigmamod = tmp_dict['r1_sigmamod'][0,0,:] 
+                    sigmamod_tmp_dict[imu,isig] = r1_sigmamod
+                else:                               
+                    r1_sigmamod = output_dict['r1_sigmamod'][imu,isig,:]              
+                plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(r1_sigmamod[f_vals<=1]), 'k')
                 plt_min = np.min(1000*np.abs(r1_sigmamod[f_vals<=1]))
                 plt_max = np.max(1000*np.abs(r1_sigmamod[f_vals<=1]))
                 plt.ylim([plt_min, plt_max])
                 plt.xlim([1000*f_vals[0], 1000])
-                if k_imu==0:
-                    plt.ylabel('$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[isig]))
-                if k_isig==len(inds_sigma_plot)-1:    
-                    plt.xlabel('$\mu={0:.3}$ [mV/ms]'.format(mu_vals[imu]))
 
     if 'ifft_r1_mumod' in output_names:
         plt.figure()
-        plt.suptitle('Linear filter for $\mu$ (unnormalized) in kHz/V vs. ms')
+        plt.suptitle('linear filter for $\mu$ (unnormalized) in kHz/V')
         inds = t_vals<=tmax
         for k_isig, isig in enumerate(inds_sigma_plot):        
             for k_imu, imu in enumerate(inds_mu_plot):           
                 plt.subplot(N_sigma,N_mu,k_isig*N_mu+k_imu+1)                
                 
                 # scaling factor for rate response (rather than filter) fit:
-                if recalc_filters:
-                    drdmu = drdmu_tmp_dict[imu,isig]  
-                    r_ss = rss_tmp_dict[imu,isig]
-                else:
-                    drdmu = output_dict['dr_ss_dmu'][imu,isig]
-                    r_ss = output_dict['r_ss'][imu,isig]
+                drdmu = output_dict['dr_ss_dmu'][imu,isig]
                 
                 # analytical exponential fit (using asymptotics)
-                tau = params['deltaT']*drdmu/r_ss
-                A = 1.0/tau
-                exp_fit = drdmu * A*np.exp(-t_vals/tau)
-                plt.plot(t_vals[inds], 1000*exp_fit[inds], 'c--', linewidth=1.5)
+                if params['DeltaT']>0:  #otherwise it makes no sense
+                    tau = params['DeltaT']*drdmu/output_dict['r_ss'][imu,isig]
+                    A = 1.0/tau
+                    exp_fit = drdmu * A*np.exp(-t_vals/tau)
+                    plt.plot(t_vals[inds], 1000*exp_fit[inds], 'b--')
                    
                 # semi-analytical exponential fit
                 if 'tau_mu_exp' in quantities_dict.keys():
                     tau = quantities_dict['tau_mu_exp'][imu,isig]
                     A = 1.0/tau
                     exp_fit = drdmu * A*np.exp(-t_vals/tau)
-                    plt.plot(t_vals[inds], 1000*exp_fit[inds], 'r', linewidth=1.5)                
+                    plt.plot(t_vals[inds], 1000*exp_fit[inds], 'c')                
                 
                 # semi-analytical damped oscillator fit
                 if 'tau_mu_dosc' in quantities_dict.keys():
@@ -1266,7 +1297,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                     f0 = quantities_dict['f0_mu_dosc'][imu,isig]
                     A = (1.0 + (2*np.pi*f0*tau)**2)/tau
                     dosc_fit = drdmu * A*np.exp(-t_vals/tau)*np.cos(2*np.pi*f0*t_vals)
-                    plt.plot(t_vals[inds], 1000*dosc_fit[inds], 'm', linewidth=1.5)
+                    plt.plot(t_vals[inds], 1000*dosc_fit[inds], 'm')
                 
                 # semi-analytical bi-exp, damped oscillator fit
                 if 'tau1_mu_bedosc' in quantities_dict.keys():
@@ -1295,35 +1326,28 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                                                   np.flipud(np.real(r1_mumod)) - \
                                                   1j*np.flipud(np.imag(r1_mumod))])
                 mu_filter_unnorm = np.fft.ifft(r1_reshaped)/dt  #kHz/mV
-                plt.plot(t_vals[inds], 1000*mu_filter_unnorm[inds], 'k', linewidth=1.5)
+                plt.plot(t_vals[inds], 1000*mu_filter_unnorm[inds], 'k')
                 
                 #plt_min = np.min(mu_filter_unnorm[inds])
                 plt_max = np.max(1000*mu_filter_unnorm[inds])
                 plt.ylim([-0.12*plt_max, 1.2*plt_max]) 
-                plt.xticks([0, tmax])      
-                if k_imu==0:
-                    plt.ylabel('$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[isig]))
-                if k_isig==len(inds_sigma_plot)-1:    
-                    plt.xlabel('$\mu={0:.3}$ [mV/ms]'.format(mu_vals[imu]))
+                plt.xticks([0, tmax])        
 
       
     if 'ifft_r1_sigmamod' in output_names:
         plt.figure()
-        plt.suptitle('Linear filter for $\sigma$ (unnormalized) in kHz/(V*sqrt(ms)) vs. ms')
+        plt.suptitle('linear filter for $\sigma$ (unnormalized) in kHz/(V*sqrt(ms))')
         inds = t_vals<=tmax
         for k_isig, isig in enumerate(inds_sigma_plot):        
             for k_imu, imu in enumerate(inds_mu_plot):           
                 plt.subplot(N_sigma,N_mu,k_isig*N_mu+k_imu+1)                
                 
                 # scaling factor for rate response (rather than filter) fit:
-                if recalc_filters:
-                    drdsigma = drdsigma_tmp_dict[imu,isig]
-                else:
-                    drdsigma = output_dict['dr_ss_dsigma'][imu,isig]
+                drdsigma = output_dict['dr_ss_dsigma'][imu,isig]
                 #print mu_vals[imu], sigma_vals[isig], drdsigma  #TEMP
                 
                 ## analytical exponential fit (using asymptotics)
-                #tau = params['deltaT']**2*drdsigma/ \
+                #tau = params['DeltaT']**2*drdsigma/ \
                 #      (output_dict['r_ss'][imu,isig] * sigma_vals[isig])
                 #A = 1.0/tau
                 #exp_fit = drdsigma * A*np.exp(-t_vals/tau)
@@ -1335,7 +1359,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                         tau = quantities_dict['tau_sigma_exp'][imu,isig]
                         A = 1.0/tau
                         exp_fit = drdsigma * A*np.exp(-t_vals/tau)
-                        plt.plot(t_vals[inds], 1000*exp_fit[inds], 'r', linewidth=1.5)   
+                        plt.plot(t_vals[inds], 1000*exp_fit[inds], 'c')                
                 
                 # semi-analytical damped oscillator fit
                 if 'tau_sigma_dosc' in quantities_dict.keys():
@@ -1344,7 +1368,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                         f0 = quantities_dict['f0_sigma_dosc'][imu,isig]
                         A = (1.0 + (2*np.pi*f0*tau)**2)/tau
                         dosc_fit = drdsigma * A*np.exp(-t_vals/tau)*np.cos(2*np.pi*f0*t_vals)
-                        plt.plot(t_vals[inds], 1000*dosc_fit[inds], 'm', linewidth=1.5)
+                        plt.plot(t_vals[inds], 1000*dosc_fit[inds], 'm')
 
                 # ifft of rate response
                 if recalc_filters:
@@ -1362,13 +1386,8 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                                                   np.flipud(np.real(r1_sigmamod)) - \
                                                   1j*np.flipud(np.imag(r1_sigmamod))])
                 sigma_filter_unnorm = np.fft.ifft(r1_reshaped)/dt  #kHz/mV
-                plt.plot(t_vals[inds], 1000*sigma_filter_unnorm[inds], 'k', linewidth=1.5) 
+                plt.plot(t_vals[inds], 1000*sigma_filter_unnorm[inds], 'k') 
                 plt_max = np.max(1000*sigma_filter_unnorm[inds])
                 plt.ylim([-0.16*plt_max, 1.2*plt_max]) 
                 plt.xticks([0, tmax])
-                if k_imu==0:
-                    plt.ylabel('$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[isig]))
-                if k_isig==len(inds_sigma_plot)-1:    
-                    plt.xlabel('$\mu={0:.3}$ [mV/ms]'.format(mu_vals[imu]))
-    plt.show()            
-                
+    plt.show()    
