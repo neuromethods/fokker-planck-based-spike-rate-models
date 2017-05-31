@@ -15,25 +15,26 @@ import multiprocessing
 from collections import OrderedDict
 import os
 
+# WHAT TO DO ------------------------------------------------------------------
+load_EIF_output = True  # True if EIF output has been computed and saved before
+load_quantities = True  # True if quantities have been computed and saved before
+compute_EIF_output = False
+compute_quantities = False  # True -> needs compute_EIF_output set to True
+save_rate_mod = False  # True to save linear rate response functions, 
+                       # False is default to save memory
+save_EIF_output = False
+save_quantities = False
+plot_filters = True  # True -> needs EIF_output set to True
+plot_quantities = True
+
+# location for saving/loading
 folder = os.path.dirname(os.path.realpath(__file__))  # directory for the files
 # currently the same directory as for the script itself
 output_filename = 'EIF_output_for_cascade.h5'
 quantities_filename = 'quantities_cascade.h5'
-load_EIF_output = False  # True if EIF output has been computed and saved before
-load_quantities = False  # True if quantities have been computed and saved before
-compute_EIF_output = False
-compute_quantities = False  # True -> needs compute_EIF_output set to True
-save_rate_mod = False  # True to save linear rate response functions, 
-                       # default is False to save memory
-save_EIF_output = False
-save_quantities = False
-plot_filters = False  # True -> needs EIF_output set to True
-plot_quantities = True
 
-# TODO: incorporate adjustments from IF parameter estimation, especially in methods_cascade.py
-# e.g. fit_exponential_freqdom
 
-# PREPARING --------------------------------------------------------------------
+# PREPARE ---------------------------------------------------------------------
 params = get_params()  # loads default parameter dictionary
 
 params['t_ref'] = 0.0  # refractory period can be >0 (but not all reduced models 
@@ -64,12 +65,12 @@ f_max = 1000.0  # Hz
 mus_plot = [-0.5, 1.5, 3.0]  # used in paper: [-0.5, 1.5, 3.0], [-0.5, 0.0, 1.5]    
 sigmas_plot = [1.5, 3.5]
 # choose background sigma values for quantity visualization        
-sigmas_quant_plot = np.arange(0.5, 4.501, 0.2) 
-#sigmas_quant_plot = sigma_vals  # all sigma values used
+#sigmas_quant_plot = np.arange(0.5, 4.501, 0.2) 
+sigmas_quant_plot = sigma_vals  # all sigma values used
 
 # some more pre-calculation parameters
-params['N_procs'] = int(3*multiprocessing.cpu_count()/4.0)  # number of parallel 
-# processes, but note that multiprocessing is only used for >1 sigma value
+params['N_procs'] = int(3*multiprocessing.cpu_count()/4.0)  # nb. of parallel procs. 
+# note that multiprocessing is only used for >1 sigma value (in sigma_vals)
 
 params['V_vals'] = np.arange(params['Vlb'],params['Vcut']+d_V/2,d_V)
 params['freq_vals'] = np.arange(d_freq, f_max+d_freq/2, d_freq)/1000  # kHz
@@ -96,7 +97,7 @@ plot_quantitiy_names =  ['r_ss', 'V_mean_ss',
 
 if __name__ == '__main__':
 
-    # LOADING ------------------------------------------------------------------
+    # LOAD --------------------------------------------------------------------
     if load_EIF_output:
         mc.load(folder+'/'+output_filename, EIF_output_dict,
                 EIF_output_names + ['mu_vals', 'sigma_vals', 'freq_vals'], params)
@@ -114,32 +115,35 @@ if __name__ == '__main__':
         freq_vals = LN_quantities_dict['freq_vals'] 
     
     
-    # COMPUTING ----------------------------------------------------------------
+    # COMPUTE -----------------------------------------------------------------
     if compute_EIF_output and compute_quantities:
+        print('')
+        print('Computing {}'.format(EIF_output_names))
+        print('This may take a while for large numbers of mu & sigma values...')
         EIF_output_dict, LN_quantities_dict = \
             mc.calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params, 
                                                   EIF_output_dict, EIF_output_names, 
                                                   save_rate_mod, LN_quantities_dict, 
                                                   LN_quantity_names)                                          
                                                  
-    # SAVING -------------------------------------------------------------------                             
+    # SAVE --------------------------------------------------------------------                             
     if save_EIF_output:
         mc.save(folder+'/'+output_filename, EIF_output_dict, params) 
-        print('saving EIF output done')
+        print('EIF/LIF output saved')
         
     if save_quantities:
         mc.save(folder+'/'+quantities_filename, LN_quantities_dict, params) 
-        print('saving LN quantities done')
+        print('LN quantities saved')
          
-    # PLOTTING -----------------------------------------------------------------
+    # PLOT --------------------------------------------------------------------
     if plot_filters:
         recalc_filters = True
         mc.plot_filters(EIF_output_dict, LN_quantities_dict, plot_EIF_output_names, 
                         params, mus_plot, sigmas_plot, recalc_filters)
         
     if plot_quantities: 
-        #mc.plot_quantities(LN_quantities_dict, plot_quantitiy_names, sigmas_quant_plot)
-        mc.plot_quantities_forpaper(LN_quantities_dict, plot_quantitiy_names, 
-                                    sigmas_quant_plot, mus_plot, sigmas_plot)
+        mc.plot_quantities(LN_quantities_dict, plot_quantitiy_names, sigmas_quant_plot)
+        #mc.plot_quantities_forpaper(LN_quantities_dict, plot_quantitiy_names, 
+        #                            sigmas_quant_plot, mus_plot, sigmas_plot)
     
 

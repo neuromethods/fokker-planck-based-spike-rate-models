@@ -7,102 +7,35 @@
 '''
 
 import numpy as np
-import scipy.integrate
 import scipy.optimize
 import numba
 import multiprocessing
-#import itertools
 import time
 import tables
 from warnings import warn
 import matplotlib.pyplot as plt
-#import matplotlib.colors as colors
 
 
-def EIF_steadystate_and_linresponse(mu_vals, sigma_vals, params, EIF_output_dict, output_names):
-    
-    print('Computing: {}'.format(output_names))
-    
-    N_mu_vals = len(mu_vals)    
-    N_sigma_vals = len(sigma_vals)
-    total = len(mu_vals)*len(sigma_vals)
-    if total<=params['N_procs']:
-        N_procs = 1
-    else:
-        N_procs = params['N_procs']
-        
-    # zero EIF_output_dict arrays
-    for n in output_names:  
-        # complex values dependent on mu, sigma, frequency
-        if n in ['r1_mumod', 'r1_sigmamod']:
-            EIF_output_dict[n] = np.zeros((N_mu_vals, N_sigma_vals, len(params['freq_vals']))) + 0j
-            
-        # complex values dependent on mu, sigma
-        elif n in ['peak_real_r1_mumod', 'peak_imag_r1_mumod', 
-                   'peak_real_r1_sigmamod', 'peak_imag_r1_sigmamod']:
-            EIF_output_dict[n] = np.zeros((N_mu_vals, N_sigma_vals)) + 0j
-            
-        # real values dependent on mu, sigma
-        else: 
-            EIF_output_dict[n] = np.zeros((N_mu_vals, N_sigma_vals))
-                
-    arg_tuple_list = [(imu, mu_vals[imu], isig, sigma_vals[isig], params, output_names) 
-                      for imu in range(N_mu_vals) for isig in range(N_sigma_vals)]    
-                      
-    comp_total_start = time.time()
-                  
-    if N_procs <= 1:
-        # single processing version, i.e. loop
-        pool = False
-        result = (EIF_ss_and_linresp_given_musigma_wrapper(arg_tuple) 
-                  for arg_tuple in arg_tuple_list) 
-    else:
-        # multiproc version
-        pool = multiprocessing.Pool(params['N_procs'])
-        result = pool.imap_unordered(EIF_ss_and_linresp_given_musigma_wrapper, arg_tuple_list)
-        
-    finished = 0 
-    for imu, isig, res_given_musigma_dict in result:
-        finished += 1
-        print(('{count} of {tot} EIF steady-state / rate response calculations completed').
-              format(count=finished, tot=total)) 
-        for k in res_given_musigma_dict.keys():
-            if k in ['r1_mumod', 'r1_sigmamod']:
-                EIF_output_dict[k][imu,isig,:] = res_given_musigma_dict[k]
-            else:
-                EIF_output_dict[k][imu,isig] = res_given_musigma_dict[k]    
-    
-    # also include mu_vals, sigma_vals, and freq_vals in output dictionary
-    EIF_output_dict['mu_vals'] = mu_vals
-    EIF_output_dict['sigma_vals'] = sigma_vals
-    EIF_output_dict['freq_vals'] = params['freq_vals'].copy()
-    
-    print('Computation of: {} done'.format(output_names))
-    print('Total time for computation (N_mu_vals={Nmu}, N_sigma_vals={Nsig}): {rt}s'.
-          format(rt=np.round(time.time()-comp_total_start,2), Nmu=N_mu_vals, Nsig=N_sigma_vals))
-      
-    return EIF_output_dict
-    
-    
+# COMPUTING FUNCTIONS ---------------------------------------------------------
 
+# prepares data structures and calls computing functions (possibly in parallel)
 def calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params, 
                                        EIF_output_dict, output_names, save_rate_mod,
                                        LN_quantities_dict, quantity_names):
     
-    print('Computing: {}'.format(output_names))
-    
     N_mu_vals = len(mu_vals)    
     N_sigma_vals = len(sigma_vals)
-    if N_sigma_vals<=params['N_procs']:
+    if N_sigma_vals==1:
         N_procs = 1
     else:
         N_procs = params['N_procs']
         
-    # zero EIF_output_dict arrays
+    # create EIF_output_dict arrays to be filled
     for n in output_names:  
         # complex values dependent on mu, sigma, frequency
         if n in ['r1_mumod', 'r1_sigmamod'] and save_rate_mod:
-            EIF_output_dict[n] = np.zeros((N_mu_vals, N_sigma_vals, len(params['freq_vals']))) + 0j
+            EIF_output_dict[n] = np.zeros((N_mu_vals, N_sigma_vals, 
+                                           len(params['freq_vals']))) + 0j
             
         # complex values dependent on mu, sigma
         elif n in ['peak_real_r1_mumod', 'peak_imag_r1_mumod', 
@@ -113,7 +46,7 @@ def calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params,
         else: 
             EIF_output_dict[n] = np.zeros((N_mu_vals, N_sigma_vals))
     
-    # zero quantities_dict arrays
+    # create quantities_dict arrays to be filled
     for n in quantity_names:  
         # real values dependent on mu, sigma
         LN_quantities_dict[n] = np.zeros((N_mu_vals, N_sigma_vals))
@@ -125,20 +58,22 @@ def calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params,
     comp_total_start = time.time()
                   
     if N_procs <= 1:
-        # single processing version, i.e. loop
+        # single process version
         pool = False
         result = (output_and_quantities_given_sigma_wrapper(arg_tuple) 
                   for arg_tuple in arg_tuple_list) 
     else:
         # multiproc version
         pool = multiprocessing.Pool(params['N_procs'])
-        result = pool.imap_unordered(output_and_quantities_given_sigma_wrapper, arg_tuple_list)
+        result = pool.imap_unordered(output_and_quantities_given_sigma_wrapper, 
+                                     arg_tuple_list)
         
     finished = 0 
     for isig, res_given_sigma_dict in result:
         finished += 1
-        print(('{count} of {tot} EIF steady-state / rate response and LN quantity calculations completed').
-              format(count=finished*N_mu_vals, tot=N_mu_vals*N_sigma_vals)) 
+        print(('{count} of {tot} steady-state / rate response and LN quantity ' + \
+               'calculations completed').format(count=finished*N_mu_vals, 
+                                                tot=N_mu_vals*N_sigma_vals)) 
         for k in res_given_sigma_dict.keys():
             for imu, mu in enumerate(mu_vals):
                 if k in ['r1_mumod', 'r1_sigmamod'] and save_rate_mod:
@@ -159,14 +94,17 @@ def calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params,
     
     print('Computation of: {} done'.format(output_names))
     print('Total time for computation (N_mu_vals={Nmu}, N_sigma_vals={Nsig}): {rt}s'.
-          format(rt=np.round(time.time()-comp_total_start,2), Nmu=N_mu_vals, Nsig=N_sigma_vals))
+          format(rt=np.round(time.time()-comp_total_start,2), Nmu=N_mu_vals, 
+                 Nsig=N_sigma_vals))
       
     return EIF_output_dict, LN_quantities_dict
     
 
-
+# wrapper function that calls computing functions for a given sigma value and 
+# looping over all given mu values (depending on what needs to be computed)
 def output_and_quantities_given_sigma_wrapper(arg_tuple):
     isig, sigma, mu_vals, params, output_names, quantity_names, save_rate_mod = arg_tuple
+    # a few shortcuts
     V_vec = params['V_vals']
     Vr = params['Vr']
     kr = np.argmin(np.abs(V_vec-Vr))  # reset index value
@@ -178,10 +116,8 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
     dV = V_vec[1]-V_vec[0]
     Tref = params['t_ref']
     
-    # for filter fitting (below)
-    f = params['freq_vals']
-    # for dosc fitting
-    init_vals = [10.0, 0.01]  # tau (ms), f0 (kHz)
+    # for damped oscillator fitting
+    init_vals = [10.0, 0.01]  # tau (ms), f0=omega/(2*pi) (kHz) [omega used in the paper]
         
     N_mu_vals = len(mu_vals)    
     res_given_sigma_dict = dict()
@@ -206,7 +142,7 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
             
     
     for imu, mu in enumerate(mu_vals):    
-        # steady state output:
+        # first, steady state output & derivatives drdmu, drdsigma
         p_ss, r_ss, q_ss = EIF_steady_state(V_vec, kr, taum, EL, Vr, VT, DeltaT, mu, sigma) 
         _, r_ss_dmu, _ = EIF_steady_state(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
                                           mu+params['d_mu'], sigma)
@@ -214,7 +150,9 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
                                            mu, sigma+params['d_sigma'])
            
         if 'V_mean_ss' in output_names:
-            # disregarding Tref -> use for Vmean when clamping both, V and w:
+            # disregarding refr. period
+            # when in the AdEx model both V and w are clamped during the refr. 
+            # period use this Vmean (otherwise see below)
             V_mean = dV*np.sum(V_vec*p_ss)  
             res_given_sigma_dict['V_mean_ss'][imu] = V_mean
         
@@ -225,8 +163,9 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
         r_ss_dsig_ref = r_ss_dsig/(1+r_ss_dsig*Tref) - r_ss_ref   
         
         if 'V_mean_sps_ss' in output_names:
-            # when considering spike shape (during refr. period):
-            # density reflecting nonrefr. proportion, which integrates to r_ss_ref/r_ss 
+            # when considering spike shape (during refr. period) use this Vmean;
+            # note that the density reflecting nonrefr. proportion integrates to 
+            # r_ss_ref/r_ss 
             Vmean_sps = dV*np.sum(V_vec*p_ss) + (1-r_ss_ref/r_ss)*(params['Vcut']+Vr)/2  
             # note: (1-r_ss_ref/r_ss)==r_ss_ref*Tref 
             res_given_sigma_dict['V_mean_sps_ss'][imu] = Vmean_sps
@@ -243,19 +182,18 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
             res_given_sigma_dict['dr_ss_dsigma'][imu] = dr_ss_dsig
         
             
-        # next, mu-mod and sigma-mod over freq. range, and optionally, 
-        # binary search to determine accurate peaks of |r1mu_vec|, 
-        # and of |real(r1mu_vec)|, and |imag(r1mu_vec)| WITHIN range 
-        # [0, params['freq_vals'][-1]], assuming a uniform freq_vals range 
+        # next, rate response for mu-modulation and sigma-modulation across the 
+        # given modulation frequency range, and (optionally) accurate peaks of 
+        # the response modulations |r1|, |real(r1)|, |imag(r1)| determined by 
+        # binary search (assuming a uniform spacing in freq_vals) 
+        
         if 'r1_mumod' in output_names or 'peak_real_r1_mumod' in output_names \
         or 'peak_imag_r1_mumod' in output_names:
             w_vec = 2*np.pi*params['freq_vals']
-            # mu1 = 1e-4
-            # mu1 = params['d_mu'], consistently with use of r_ss_dmu_ref below
             inhom = params['d_mu']*p_ss
             r1mu_vec = EIF_lin_rate_response_frange(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
                                                     Tref, mu, sigma, inhom, w_vec)
-            #r1mu_vec /= mu1
+
             if save_rate_mod:                                        
                 res_given_sigma_dict['r1_mumod'][imu,:] = r1mu_vec/params['d_mu']
             
@@ -278,205 +216,102 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
         if 'r1_sigmamod' in output_names or 'peak_real_r1_sigmamod' in output_names \
         or 'peak_imag_r1_sigmamod' in output_names:
             w_vec = 2*np.pi*params['freq_vals']
-            # sigma1 = 1e-4;  #inhom for sigma^2 modulation = -sigma21*dp_ssdV/2  
-            # sigma1 = params['d_sigma'], consistently with use of r_ss_dsigma_ref (not implemented a.t.m.)
             if DeltaT>0:
                 Psi = DeltaT*np.exp((V_vec-VT)/DeltaT)
             else:
                 Psi = 0.0*V_vec   
             driftterm = ( mu + ( EL-V_vec+Psi )/taum ) * p_ss
-            inhom = params['d_sigma'] * 2/sigma * (q_ss - driftterm)  # inhom = -sigma*sigma1*dp_ssdV
+            inhom = params['d_sigma'] * 2/sigma * (q_ss - driftterm)  
+            # == -sigma*params['d_sigma']*dp_ssdV
+            # Remark: for sigma^2 modulation of amplitude d_sigma2, 
+            # inhom = -d_sigma2*dp_ssdV/2
             r1sig_vec = EIF_lin_rate_response_frange(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
                                                      Tref, mu, sigma, inhom, w_vec)
-            #r1sig_vec /= sigma1
+ 
             if save_rate_mod:                                         
                 res_given_sigma_dict['r1_sigmamod'][imu,:] = r1sig_vec/params['d_sigma']   
             
             if 'peak_real_r1_sigmamod' in output_names:
                 abs_re_im = 'real'    
-                w_peak, peak_val = EIF_find_lin_response_peak(w_vec,r1sig_vec,r_ss_dsig_ref,
-                                                          V_vec,kr,taum,EL,Vr,VT,DeltaT,
-                                                          Tref, mu,sigma,inhom,abs_re_im)
-                res_given_sigma_dict['peak_real_r1_sigmamod'][imu] = peak_val/params['d_sigma']
+                w_peak, peak_val = EIF_find_lin_response_peak(w_vec, r1sig_vec,
+                                                        r_ss_dsig_ref, V_vec,kr,
+                                                        taum,EL,Vr,VT,DeltaT,Tref, 
+                                                        mu,sigma,inhom,abs_re_im)
+                res_given_sigma_dict['peak_real_r1_sigmamod'][imu] = \
+                                                        peak_val/params['d_sigma']
                 res_given_sigma_dict['f_peak_real_r1_sigmamod'][imu] = w_peak/(2*np.pi)
                                               
             if 'peak_imag_r1_sigmamod' in output_names:                                              
                 abs_re_im = 'imag'    
-                w_peak, peak_val = EIF_find_lin_response_peak(w_vec,r1sig_vec,r_ss_dsig_ref,
-                                                          V_vec,kr,taum,EL,Vr,VT,DeltaT,
-                                                          Tref, mu,sigma,inhom,abs_re_im)
-                res_given_sigma_dict['peak_imag_r1_sigmamod'][imu] = peak_val/params['d_sigma']
+                w_peak, peak_val = EIF_find_lin_response_peak(w_vec, r1sig_vec,
+                                                        r_ss_dsig_ref, V_vec,kr,
+                                                        taum,EL,Vr,VT,DeltaT,Tref, 
+                                                        mu,sigma,inhom,abs_re_im)
+                res_given_sigma_dict['peak_imag_r1_sigmamod'][imu] = \
+                                                        peak_val/params['d_sigma']
                 res_given_sigma_dict['f_peak_imag_r1_sigmamod'][imu] = w_peak/(2*np.pi)
         
-        # now the quantities (fitting the filters)
+        
+        # next, the quantities obtained by fitting the filters (in the freq. domain)
         if 'tau_mu_exp' in quantity_names:
-            # shortcut for normalized r1_mumod in for-loop
-            r1_mumod_f0 = dr_ss_dmu 
-            # It seems that for some parametrizations using the derivative dr_ss_dmu
-            # for f=0 (as we should do in theory) introduces errors -- #TODO: 
-            # need more robust computation of derivative perhaps
-            # real value equal to the time-integral of the filter from 0 to inf
-            r1_mumod_normalized = r1mu_vec/r1mu_vec[0] #r1mu_vec/params['d_mu'] /r1_mumod_f0
-            #print r1_mumod_normalized[0]
+            # use normalized rate response r1 for fitting, normalize such that 
+            # its value at f=0 is one (by dividing by r1_mumod_f0, the real value 
+            # equal to the time-integral of the filter from 0 to inf)         
+            #r1_mumod_f0 = dr_ss_dmu 
+            #r1_mumod_normalized = r1mu_vec/params['d_mu'] /r1_mumod_f0
+            r1_mumod_normalized = r1mu_vec/r1mu_vec[0]  # this version is more robust 
+            # because r1 for f->0 and dr_ss_dmu deviate for some parametrizations
             init_val = 1.0 #ms
-            tau = fit_exponential_freqdom(f, r1_mumod_normalized, init_val)
+            tau = fit_exponential_freqdom(params['freq_vals'], r1_mumod_normalized, 
+                                          init_val)
             res_given_sigma_dict['tau_mu_exp'][imu] = tau
             
         if 'tau_sigma_exp' in quantity_names:
-            # shortcut for normalized r1_sigmamod in for-loop
+            # use normalized rate response r1 for fitting, normalize such that 
+            # its value at f=0 is one (by dividing by r1_sigmamod_f0, the real value 
+            # equal to the time-integral of the filter from 0 to inf)        
             r1_sigmamod_f0 = dr_ss_dsig
-            # real value equal to the time-integral of the filter from 0 to inf
             r1_sigmamod_normalized = r1sig_vec/params['d_sigma'] /r1_sigmamod_f0
+            # r1_sigmamod_normalized = r1sig_vec/r1sig_vec[0]  # alternative, which 
+            # might be more robust for some parametrizations
             init_val = 0.1 #ms
-            if r1_sigmamod_f0>0:  # explain
-                tau = fit_exponential_freqdom(f, r1_sigmamod_normalized, init_val)
+            if r1_sigmamod_f0>0:  # see the paper around Eq. 88 for an explanation
+                tau = fit_exponential_freqdom(params['freq_vals'], 
+                                              r1_sigmamod_normalized, init_val)
             else: 
                 tau = 0.0
             res_given_sigma_dict['tau_sigma_exp'][imu] = tau
            
+        # Fitting damped oscillator function (with exponential decay) 
+        # B*exp(-t/tau)*cos(2*pi*f0*t) to normalized rate response in Fourier space:
+        # B*tau/2 * ( 1/(1 + 2*pi*1i*tau*(f-f0)) + 1/(1 + 2*pi*1i*tau*(f+f0)) )
+        # with B = (1 + (2*pi*f0*tau)^2)/tau to guarantee equality at f=0,
+        # see the paper before Eq. 87 for more details
         if 'tau_mu_dosc' in quantity_names:
-            sigmod = False
-            r1_mumod_f0 = dr_ss_dmu
-            # real value equal to the time-integral of the filter from 0 to inf
+            r1_mumod_f0 = dr_ss_dmu  # real value equal to the time-integral 
+                                     # of the filter from 0 to inf
             # shortcuts for peak values and corresponding frequencies:
             fpeak_real_r1_mumod = res_given_sigma_dict['f_peak_real_r1_mumod'][imu]
             peak_real_r1_mumod = res_given_sigma_dict['peak_real_r1_mumod'][imu]/r1_mumod_f0
             fpeak_imag_r1_mumod = res_given_sigma_dict['f_peak_imag_r1_mumod'][imu]
             peak_imag_r1_mumod = res_given_sigma_dict['peak_imag_r1_mumod'][imu]/r1_mumod_f0
 
-            # TODO: warning if first (smallest) mu > -0.5 and if dmu > 0.025
             firstfit = imu==0
+            if (firstfit and mu > -0.5) or mu_vals[1]-mu_vals[0] > 0.025:
+                print('WARNING: damped oscillator fitting parameter values may +' + \
+                      'not be suitable')
+                print('--> check fit_exp_damped_osc_freqdom function')
             tau, f0 = fit_exp_damped_osc_freqdom(init_vals, fpeak_real_r1_mumod, 
-                                                 peak_real_r1_mumod, 
-                                                 fpeak_imag_r1_mumod, 
-                                                 peak_imag_r1_mumod, firstfit, sigmod)
+                                                 peak_real_r1_mumod, fpeak_imag_r1_mumod, 
+                                                 peak_imag_r1_mumod, firstfit)
             res_given_sigma_dict['tau_mu_dosc'][imu] = tau
             res_given_sigma_dict['f0_mu_dosc'][imu] = f0
             init_vals =[tau, f0]
-    
-        # additional fitting options in alternative version (below)    
+      
         #print 'calculation for mu =', mu, 'done'  
-    #print 'another mu curve done'
+    #print 'calculations for sigma =', sigma, 'done'  
     return isig, res_given_sigma_dict
 
-    
-                                 
-def EIF_ss_and_linresp_given_musigma_wrapper(arg_tuple):
-    imu, mu, isig, sigma, params, output_names = arg_tuple
-    V_vec = params['V_vals']
-    Vr = params['Vr']
-    kr = np.argmin(np.abs(V_vec-Vr))  # reset index value
-    VT = params['VT']
-    taum = params['taum']
-    EL = params['EL']
-    DeltaT = params['deltaT']
-    
-    res_given_musigma_dict = dict()
-    
-    # steady state output:
-    p_ss, r_ss, q_ss = EIF_steady_state(V_vec, kr, taum, EL, Vr, VT, DeltaT, mu, sigma) 
-    _, r_ss_dmu, _ = EIF_steady_state(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
-                                      mu+params['d_mu'], sigma)
-    _, r_ss_dsig, _ = EIF_steady_state(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
-                                       mu, sigma+params['d_sigma'])
-    
-    dV = V_vec[1]-V_vec[0]
-    Tref = params['t_ref']
-    
-    if 'V_mean_ss' in output_names:
-        # disregarding Tref -> use for Vmean when clamping both, V and w:
-        V_mean = dV*np.sum(V_vec*p_ss)  
-        res_given_musigma_dict['V_mean_ss'] = V_mean
-    
-    r_ss_ref = r_ss/(1+r_ss*Tref)    
-    p_ss = r_ss_ref * p_ss/r_ss
-    q_ss = r_ss_ref * q_ss/r_ss  # prob. flux needed for sigma-mod calculation              
-    r_ss_dmu_ref = r_ss_dmu/(1+r_ss_dmu*Tref) - r_ss_ref
-    r_ss_dsig_ref = r_ss_dsig/(1+r_ss_dsig*Tref) - r_ss_ref   
-    
-    if 'V_mean_sps_ss' in output_names:
-        # when considering spike shape (during refr. period):
-        # density reflecting nonrefr. proportion, which integrates to r_ss_ref/r_ss 
-        Vmean_sps = dV*np.sum(V_vec*p_ss) + (1-r_ss_ref/r_ss)*(params['Vcut']+Vr)/2  
-        # note: (1-r_ss_ref/r_ss)==r_ss_ref*Tref 
-        res_given_musigma_dict['V_mean_sps_ss'] = Vmean_sps
-        
-    if 'r_ss' in output_names:
-        res_given_musigma_dict['r_ss'] = r_ss_ref
-        
-    if 'dr_ss_dmu' in output_names:      
-        dr_ss_dmu = r_ss_dmu_ref/params['d_mu']
-        res_given_musigma_dict['dr_ss_dmu'] = dr_ss_dmu
-        
-    if 'dr_ss_dsigma' in output_names:        
-        dr_ss_dsig = r_ss_dsig_ref/params['d_sigma']
-        res_given_musigma_dict['dr_ss_dsigma'] = dr_ss_dsig
-    
-        
-    # next, mu-mod and sigma-mod over freq. range, and optionally, 
-    # binary search to determine accurate peaks of |r1mu_vec|, 
-    # and of |real(r1mu_vec)|, and |imag(r1mu_vec)| WITHIN range 
-    # [0, params['freq_vals'][-1]], assuming a uniform freq_vals range 
-    if 'r1_mumod' in output_names or 'peak_real_r1_mumod' in output_names \
-    or 'peak_imag_r1_mumod' in output_names:
-        w_vec = 2*np.pi*params['freq_vals']
-        # mu1 = 1e-4
-        # mu1 = params['d_mu'], consistently with use of r_ss_dmu_ref below
-        inhom = params['d_mu']*p_ss
-        r1mu_vec = EIF_lin_rate_response_frange(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
-                                                Tref, mu, sigma, inhom, w_vec)
-        #r1mu_vec /= mu1
-        res_given_musigma_dict['r1_mumod'] = r1mu_vec/params['d_mu']
-        
-        if 'peak_real_r1_mumod' in output_names:
-            abs_re_im = 'real'    
-            w_peak, peak_val = EIF_find_lin_response_peak(w_vec,r1mu_vec,r_ss_dmu_ref,
-                                                      V_vec,kr,taum,EL,Vr,VT,DeltaT,
-                                                      Tref, mu,sigma,inhom,abs_re_im)
-            res_given_musigma_dict['peak_real_r1_mumod'] = peak_val/params['d_mu']
-            res_given_musigma_dict['f_peak_real_r1_mumod'] = w_peak/(2*np.pi)
-                                          
-        if 'peak_imag_r1_mumod' in output_names:                                              
-            abs_re_im = 'imag'    
-            w_peak, peak_val = EIF_find_lin_response_peak(w_vec,r1mu_vec,r_ss_dmu_ref,
-                                                      V_vec,kr,taum,EL,Vr,VT,DeltaT,
-                                                      Tref, mu,sigma,inhom,abs_re_im)
-            res_given_musigma_dict['peak_imag_r1_mumod'] = peak_val/params['d_mu']
-            res_given_musigma_dict['f_peak_imag_r1_mumod'] = w_peak/(2*np.pi)                                          
-   
-    if 'r1_sigmamod' in output_names or 'peak_real_r1_sigmamod' in output_names \
-    or 'peak_imag_r1_sigmamod' in output_names:
-        w_vec = 2*np.pi*params['freq_vals']
-        # sigma1 = 1e-4;  #inhom for sigma^2 modulation = -sigma21*dp_ssdV/2  
-        # sigma1 = params['d_sigma'], consistently with use of r_ss_dsigma_ref (not implemented a.t.m.)
-        if DeltaT>0:
-            Psi = DeltaT*np.exp((V_vec-VT)/DeltaT)
-        else:
-            Psi = 0.0*V_vec   
-        driftterm = ( mu + ( EL-V_vec+Psi )/taum ) * p_ss
-        inhom = params['d_sigma'] * 2/sigma * (q_ss - driftterm)  # inhom = -sigma*sigma1*dp_ssdV
-        r1sig_vec = EIF_lin_rate_response_frange(V_vec, kr, taum, EL, Vr, VT, DeltaT, 
-                                                 Tref, mu, sigma, inhom, w_vec)
-        #r1sig_vec /= sigma1
-        res_given_musigma_dict['r1_sigmamod'] = r1sig_vec/params['d_sigma']   
-        
-        if 'peak_real_r1_sigmamod' in output_names:
-            abs_re_im = 'real'    
-            w_peak, peak_val = EIF_find_lin_response_peak(w_vec,r1sig_vec,r_ss_dsig_ref,
-                                                      V_vec,kr,taum,EL,Vr,VT,DeltaT,
-                                                      Tref, mu,sigma,inhom,abs_re_im)
-            res_given_musigma_dict['peak_real_r1_sigmamod'] = peak_val/params['d_sigma']
-            res_given_musigma_dict['f_peak_real_r1_sigmamod'] = w_peak/(2*np.pi)
-                                          
-        if 'peak_imag_r1_sigmamod' in output_names:                                              
-            abs_re_im = 'imag'    
-            w_peak, peak_val = EIF_find_lin_response_peak(w_vec,r1sig_vec,r_ss_dsig_ref,
-                                                      V_vec,kr,taum,EL,Vr,VT,DeltaT,
-                                                      Tref, mu,sigma,inhom,abs_re_im)
-            res_given_musigma_dict['peak_imag_r1_sigmamod'] = peak_val/params['d_sigma']
-            res_given_musigma_dict['f_peak_imag_r1_sigmamod'] = w_peak/(2*np.pi)
-        
-    return imu, isig, res_given_musigma_dict
     
     
 # TODO: include as comment perhaps
@@ -568,6 +403,7 @@ def EIF_find_lin_response_peak(w_vec, r1_vec, r1_f0, V_vec, kr, taum, EL, Vr, VT
        val = np.max(abs(np.imag(r1_vec)))
        ind = np.argmax(abs(np.imag(r1_vec)))
    # now, binary search to get peak of r1_vec with higher accuracy 
+   # if it is not very close to f=0
    if ind>0: 
       w_peak = w_vec[ind];  dw = w_vec[1]-w_vec[0];
       w_min = 2*np.pi*1e-5
@@ -687,6 +523,7 @@ def fit_exponential_freqdom(f, r1_mod_normalized, init_val):
 #    tau = sol.x                            
     return tau
     
+
 def exp_mean_sq_dist(tau, *args):  # not used a.t.m.
     # Fitting exponential function A*exp(-t/tau) in Fourier space to data:
     # A*tau / (1 + 1i*2*pi*f*tau)  f in kHz, tau in ms 
@@ -696,26 +533,17 @@ def exp_mean_sq_dist(tau, *args):  # not used a.t.m.
     error = np.sum(np.abs(exp_fdom - r1_mod_normalized)**2)  
     # correct normalization for mean squared error not important
     return error
+
     
-def exponential_fdom(f_vals, tau):
-    out = 1.0 / (1.0 + 2*1j*np.pi*f_vals*tau)
-    return np.concatenate([np.real(out), np.imag(out)])
- 
 
 def fit_exp_damped_osc_freqdom(init_vals, fpeak_real_r1_mumod, peak_real_r1_mumod, 
                                fpeak_imag_r1_mumod, peak_imag_r1_mumod, firstfit, sigmod):
-    # Fitting damped oscillator function (with exponential decay) A*exp(-t/tau)*cos(2*pi*f0*t) 
-    # to normalized rate response in Fourier space:
-    # A*tau/2 * ( 1/(1 + 2*pi*1i*tau*(f-f0)) + 1/(1 + 2*pi*1i*tau*(f+f0)) )
-    # with A = (1 + (2*pi*f0*tau)^2)/tau to guarantee equality at freq=0
-         
-    # first global method to avoid local optima and use tight boundaries in this case
-    # start global (tight bounds)...
+    
+    # first global method to avoid local optima (tight boundaries used here)
+    # Note that some of the values set here might not be optimal for certain 
+    # parametrizations of the EIF/LIF model
     if firstfit:  # first fit, seems appropriate for mu < -0.5
-        if sigmod:
-            tau_vals = np.arange(1.0, 25, 0.025)  #ms
-        else:
-            tau_vals = np.arange(10.0, 35, 0.025)  #ms
+        tau_vals = np.arange(10.0, 35, 0.025)  #ms
         f0_vals = np.arange(0.0, 0.005, 1e-4)  #kHz
     else:
         tau_vals = np.arange(np.max([0.0, init_vals[0]-5]), init_vals[0]+2, 0.005)  
@@ -737,7 +565,7 @@ def fit_exp_damped_osc_freqdom(init_vals, fpeak_real_r1_mumod, peak_real_r1_mumo
     imin, jmin = np.unravel_index(errors.argmin(),errors.shape)
     tau = tau_vals[imin]
     f0 = f0_vals[jmin]
-    #print sigmod, np.round(tau,2), np.round(f0,2)
+    
     #...then refine
     init_vals = [tau, f0]
 #    tau_lb = np.max([0.0, tau-10]);  tau_ub = tau+5;
@@ -802,10 +630,12 @@ def eval_dosc_fdom(p, f):
 
 
 
+
 # LOAD / SAVE FUNCTIONS --------------------------------------------------------
+
 def load(filepath, input_dict, quantities, param_dict):
-    
-    print('loading {} from file {}'.format(quantities, filepath))
+    print('')
+    print('Loading {} from file {}'.format(quantities, filepath))
     try:
         h5file = tables.open_file(filepath, mode='r')
         root = h5file.root
@@ -827,16 +657,14 @@ def load(filepath, input_dict, quantities, param_dict):
         h5file.close()
     
     except IOError:
-        warn('could not load quantities from file '+filepath)
+        warn('Could not load quantities from file '+filepath)
     except:
         h5file.close()
-    
-    print('')
         
 
 def save(filepath, output_dict, param_dict):
-    
-    print('saving {} into file {}'.format(output_dict.keys(), filepath))
+    print('')
+    print('Saving {} to file {}'.format(output_dict.keys(), filepath))
     try:
         h5file = tables.open_file(filepath, mode='w')
         root = h5file.root
@@ -867,14 +695,14 @@ def save(filepath, output_dict, param_dict):
         h5file.close()
     
     except IOError:
-        warn('could not write quantities into file {}'.format(filepath))
+        warn('Could not write quantities into file {}'.format(filepath))
     except:
         h5file.close()
 
-    print('')
 
 
 # PLOTTING FUNCTIONS -----------------------------------------------------------
+
 def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot, mus_plot, sigmas_plot):
     
     mu_vals = quantities_dict['mu_vals']
@@ -1139,8 +967,8 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 # value of fourier transform at f=0
                 
                 # analytical exponential fit (using asymptotics)
-                if params['DeltaT']>0:  #otherwise it makes no sense
-                    tau = params['DeltaT']*drdmu/output_dict['r_ss'][imu,isig]
+                if params['deltaT']>0:  #otherwise it makes no sense
+                    tau = params['deltaT']*drdmu/output_dict['r_ss'][imu,isig]
                     A = 1.0/tau
                     exp_fit = drdmu * A*tau/(1.0 + 2*np.pi*1j*f_vals*tau)
                     plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(exp_fit[f_vals<=1]), 'b--')
@@ -1176,11 +1004,18 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
 
                 # rate response
                 if recalc_filters:
-                    tmp_dict = {};  tmp_output_name = ['r1_mumod']
-                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
-                                                               [sigma_vals[isig]],
-                                                               params_tmp, tmp_dict,
-                                                               tmp_output_name)
+                    tmp_dict = {};  tmp_output_name = ['r1_mumod']; save_rmod = True
+                    print('')
+                    print('(Re)computing {} at higher resolution for plot'.format(tmp_output_name))
+#                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
+#                                                               [sigma_vals[isig]],
+#                                                               params_tmp, tmp_dict,
+#                                                               tmp_output_name)
+                    tmp_dict, _ = calc_EIF_output_and_cascade_quants([mu_vals[imu]],
+                                                                     [sigma_vals[isig]],
+                                                                     params_tmp, tmp_dict,
+                                                                     tmp_output_name, 
+                                                                     save_rmod, {}, [])
                     r1_mumod = tmp_dict['r1_mumod'][0,0,:]
                     mumod_tmp_dict[imu,isig] = r1_mumod
                 else:                               
@@ -1251,11 +1086,18 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
 
                 # rate response
                 if recalc_filters:
-                    tmp_dict = {};  tmp_output_name = ['r1_sigmamod']
-                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
-                                                               [sigma_vals[isig]],
-                                                               params_tmp, tmp_dict,
-                                                               tmp_output_name)
+                    tmp_dict = {};  tmp_output_name = ['r1_sigmamod'];  save_rmod = True
+                    print('')
+                    print('(Re)computing {} at higher resolution for plot'.format(tmp_output_name))
+#                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
+#                                                               [sigma_vals[isig]],
+#                                                               params_tmp, tmp_dict,
+#                                                               tmp_output_name)
+                    tmp_dict, _ = calc_EIF_output_and_cascade_quants([mu_vals[imu]],
+                                                                     [sigma_vals[isig]],
+                                                                     params_tmp, tmp_dict,
+                                                                     tmp_output_name, 
+                                                                     save_rmod, {}, [])
                     r1_sigmamod = tmp_dict['r1_sigmamod'][0,0,:] 
                     sigmamod_tmp_dict[imu,isig] = r1_sigmamod
                 else:                               
@@ -1278,8 +1120,8 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 drdmu = output_dict['dr_ss_dmu'][imu,isig]
                 
                 # analytical exponential fit (using asymptotics)
-                if params['DeltaT']>0:  #otherwise it makes no sense
-                    tau = params['DeltaT']*drdmu/output_dict['r_ss'][imu,isig]
+                if params['deltaT']>0:  #otherwise it makes no sense
+                    tau = params['deltaT']*drdmu/output_dict['r_ss'][imu,isig]
                     A = 1.0/tau
                     exp_fit = drdmu * A*np.exp(-t_vals/tau)
                     plt.plot(t_vals[inds], 1000*exp_fit[inds], 'b--')
@@ -1323,9 +1165,11 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                     r1_reshaped = np.concatenate([np.array([drdmu]), r1_mumod])
                 else:
                     r1_reshaped = np.concatenate([np.array([drdmu]), r1_mumod, 
-                                                  np.flipud(np.real(r1_mumod)) - \
-                                                  1j*np.flipud(np.imag(r1_mumod))])
+                                                  np.flipud(np.conj(r1_mumod))])
                 mu_filter_unnorm = np.fft.ifft(r1_reshaped)/dt  #kHz/mV
+                # minor correction to avoid plotting errors (vanishingly small 
+                # negative values and imaginary parts might occur for numerical reasons)
+                mu_filter_unnorm = np.real(mu_filter_unnorm)
                 plt.plot(t_vals[inds], 1000*mu_filter_unnorm[inds], 'k')
                 
                 #plt_min = np.min(mu_filter_unnorm[inds])
@@ -1347,7 +1191,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 #print mu_vals[imu], sigma_vals[isig], drdsigma  #TEMP
                 
                 ## analytical exponential fit (using asymptotics)
-                #tau = params['DeltaT']**2*drdsigma/ \
+                #tau = params['deltaT']**2*drdsigma/ \
                 #      (output_dict['r_ss'][imu,isig] * sigma_vals[isig])
                 #A = 1.0/tau
                 #exp_fit = drdsigma * A*np.exp(-t_vals/tau)
@@ -1383,9 +1227,11 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                     r1_reshaped = np.concatenate([np.array([drdsigma]), r1_sigmamod])
                 else:
                     r1_reshaped = np.concatenate([np.array([drdsigma]), r1_sigmamod, 
-                                                  np.flipud(np.real(r1_sigmamod)) - \
-                                                  1j*np.flipud(np.imag(r1_sigmamod))])
+                                                  np.flipud(np.conj(r1_sigmamod))])
                 sigma_filter_unnorm = np.fft.ifft(r1_reshaped)/dt  #kHz/mV
+                # minor correction to avoid plotting errors (vanishingly small 
+                # negative values and imaginary parts might occur for numerical reasons)
+                sigma_filter_unnorm = np.real(sigma_filter_unnorm)
                 plt.plot(t_vals[inds], 1000*sigma_filter_unnorm[inds], 'k') 
                 plt_max = np.max(1000*sigma_filter_unnorm[inds])
                 plt.ylim([-0.16*plt_max, 1.2*plt_max]) 
