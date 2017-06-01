@@ -252,8 +252,14 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
                 res_given_sigma_dict['f_peak_imag_r1_sigmamod'][imu] = w_peak/(2*np.pi)
         
         
-        # next, the quantities obtained by fitting the filters (in the freq. domain)
-        if 'tau_mu_exp' in quantity_names:
+        # next, the quantities obtained by fitting the filters semi-analytically
+        # (in the Fourier domain)
+        
+        # fitting exponential function A*exp(-t/tau) to normalized rate response 
+        # in Fourier domain: A*tau / (1 + 1i*2*pi*f*tau)  f in kHz, tau in ms 
+        # with A = 1/tau to guarantee equality at f=0,
+        # see the paper before Eq. 85 for more details
+        if 'tau_mu_exp' in quantity_names:            
             # use normalized rate response r1 for fitting, normalize such that 
             # its value at f=0 is one (by dividing by r1_mumod_f0, the real value 
             # equal to the time-integral of the filter from 0 to inf)         
@@ -266,6 +272,8 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
                                           init_val)
             res_given_sigma_dict['tau_mu_exp'][imu] = tau
             
+        # same as above with an additional constraint, see the paper before Eq. 
+        # 89 for more details
         if 'tau_sigma_exp' in quantity_names:
             # use normalized rate response r1 for fitting, normalize such that 
             # its value at f=0 is one (by dividing by r1_sigmamod_f0, the real value 
@@ -282,8 +290,8 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
                 tau = 0.0
             res_given_sigma_dict['tau_sigma_exp'][imu] = tau
            
-        # Fitting damped oscillator function (with exponential decay) 
-        # B*exp(-t/tau)*cos(2*pi*f0*t) to normalized rate response in Fourier space:
+        # fitting damped oscillator function (with exponential decay) 
+        # B*exp(-t/tau)*cos(2*pi*f0*t) to normalized rate response in Fourier domain:
         # B*tau/2 * ( 1/(1 + 2*pi*1i*tau*(f-f0)) + 1/(1 + 2*pi*1i*tau*(f+f0)) )
         # with B = (1 + (2*pi*f0*tau)^2)/tau to guarantee equality at f=0,
         # see the paper before Eq. 87 for more details
@@ -297,8 +305,10 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
             peak_imag_r1_mumod = res_given_sigma_dict['peak_imag_r1_mumod'][imu]/r1_mumod_f0
 
             firstfit = imu==0
-            if (firstfit and mu > -0.5) or mu_vals[1]-mu_vals[0] > 0.025:
-                print('WARNING: damped oscillator fitting parameter values may +' + \
+            if (firstfit and mu > -0.5) or (mu_vals[1]-mu_vals[0] > 0.05):
+                print firstfit, mu
+                print mu_vals[1]-mu_vals[0]
+                print('WARNING: damped oscillator fitting parameter values may ' + \
                       'not be suitable')
                 print('--> check fit_exp_damped_osc_freqdom function')
             tau, f0 = fit_exp_damped_osc_freqdom(init_vals, fpeak_real_r1_mumod, 
@@ -314,13 +324,8 @@ def output_and_quantities_given_sigma_wrapper(arg_tuple):
 
     
     
-# TODO: include as comment perhaps
-# a slight refinement in the backwards integration:
-# using evaluations of V at k-1/2 instead of k (current version), which would match then 
-# with the spectral calculation scheme and (therefore) should work better for smaller mu 
-
-# larger values of d_V may be chosen when using an improved integration scheme in
-# steady-state and rate-response code (based on Magnus expansion, see MA slide) 
+# CORE FUNCTIONS that calculate steady state and 1st order spike rate response 
+# to modulations for an EIF/LIF neuron subject to white noise input 
 
 @numba.njit
 def EIF_steady_state(V_vec, kr, taum, EL, Vr, VT, DeltaT, mu, sigma):
@@ -479,33 +484,25 @@ def EIF_lin_rate_response(V_vec, kr, taum, EL, Vr, VT, DeltaT, Tref,
     r1 = -q1b/q1a
     return r1    
 
+# the functions above work efficiently in practice, but the integration schemes 
+# might be improved (e.g., based on the Magnus expansion) to allow for larger 
+# membrane voltage discretization steps  
  
+
            
 def fit_exponential_freqdom(f, r1_mod_normalized, init_val):
-    # Fitting exponential function A*exp(-t/tau) to normalized rate response in Fourier space:
-    # A*tau / (1 + 1i*2*pi*f*tau)  f in kHz, tau in ms 
-    # with A = 1/tau to guarantee equality at freq=0
-    tau_lb = 0.001  #ms 
-    tau_ub = 100.0  #ms
-#    ydata = np.concatenate([np.real(r1_mod_normalized), np.imag(r1_mod_normalized)])
-#    tau, _ = scipy.optimize.curve_fit(exponential_fdom, f, ydata, p0=init_val, 
-#                                      bounds=(tau_lb, tau_ub)) 
-    # curve_fit is a bit slower, but works better [for some reason] for sigma-mod 
-    # when drdsigma is close to 0 but still pos.:
-    # in this case the other method yields tau_max which may be a local optimum
-    # To check this we could use a global optimization method using numba for this
-    # simple 1-dim. optim. 
-    # TODO: numba based coarse global optim. for good starting point, then 
-    # refinement using scipy.optimize.minimize_scalar (bounded)  
     
+    tau_lb = 0.001  #ms, lower bound 
+    tau_ub = 100.0  #ms, upper bound
+    # first global brute-force optimization on a coarse grid to reduce risk of 
+    # finding a local optimum
     tau_step = 1.0  #ms
     tau_vals = np.arange(tau_lb, tau_ub, tau_step)
     errors = np.zeros_like(tau_vals)
     for i, tau in enumerate(tau_vals):
         errors[i] = exp_mean_sq_dist(tau, f, r1_mod_normalized)
     idx = np.argmin(errors)
-    #tau = tau_vals[idx] 
-    # refine:
+    # then refinement using a finer grid
     if idx<len(tau_vals)-1:
         tau_ub = tau_vals[idx+1]
     if idx>0:
@@ -516,7 +513,8 @@ def fit_exponential_freqdom(f, r1_mod_normalized, init_val):
     for i, tau in enumerate(tau_vals):
         errors[i] = exp_mean_sq_dist(tau, f, r1_mod_normalized)
     idx = np.argmin(errors)
-    tau = tau_vals[idx]    
+    tau = tau_vals[idx]   
+    # or, alternatively, use an "off-the-shelf" optimization method  
 #    sol = scipy.optimize.minimize_scalar(exp_mean_sq_dist, args=(f, r1_mod_normalized), 
 #                                         bounds=(tau_lb, tau_ub), method='bounded', 
 #                                         options={'disp':True, 'maxiter':500, 'xatol':1e-3})
@@ -524,73 +522,58 @@ def fit_exponential_freqdom(f, r1_mod_normalized, init_val):
     return tau
     
 
-def exp_mean_sq_dist(tau, *args):  # not used a.t.m.
-    # Fitting exponential function A*exp(-t/tau) in Fourier space to data:
-    # A*tau / (1 + 1i*2*pi*f*tau)  f in kHz, tau in ms 
-    # with A = 1/tau to guarantee equality at freq=0 (assuming normalized data)
+
+def exp_mean_sq_dist(tau, *args):
     f, r1_mod_normalized = args
-    exp_fdom = 1.0 / (1.0 + 1j*2.0*np.pi*f*tau)  # exp function evaluated at freqs. f
+    exp_fdom = 1.0 / (1.0 + 1j*2.0*np.pi*f*tau)  # exp. function in Fourier domain
     error = np.sum(np.abs(exp_fdom - r1_mod_normalized)**2)  
-    # correct normalization for mean squared error not important
+    # correct normalization for mean squared error is not important for optim.
     return error
 
     
 
 def fit_exp_damped_osc_freqdom(init_vals, fpeak_real_r1_mumod, peak_real_r1_mumod, 
-                               fpeak_imag_r1_mumod, peak_imag_r1_mumod, firstfit, sigmod):
+                               fpeak_imag_r1_mumod, peak_imag_r1_mumod, firstfit):
     
-    # first global method to avoid local optima (tight boundaries used here)
+    # first global brute-force optimization on a coarse grid to reduce risk of 
+    # finding a local optimum (narrow ranges used here)
     # Note that some of the values set here might not be optimal for certain 
     # parametrizations of the EIF/LIF model
-    if firstfit:  # first fit, seems appropriate for mu < -0.5
+    if firstfit:  
         tau_vals = np.arange(10.0, 35, 0.025)  #ms
         f0_vals = np.arange(0.0, 0.005, 1e-4)  #kHz
     else:
         tau_vals = np.arange(np.max([0.0, init_vals[0]-5]), init_vals[0]+2, 0.005)  
-        # dtau=0.005 good for global search, 0.025 maybe also ok and faster but should use optimization to refine
         f0_vals = np.arange(np.max([0.0, init_vals[1]-0.001]), init_vals[1]+0.02, 5e-5) 
-        # df=1e-5 good for global search, df=5e-5 maybe also ok and faster but should use optimization to refine
 
-#    errors = np.zeros((len(tau_vals),len(f0_vals)))
-#    for i in range(len(tau_vals)):
-#        for j in range(len(f0_vals)):
-#            p = [tau_vals[i], f0_vals[j]]
-#            dosc_at_fpreal = eval_dosc_fdom(p, fpeak_real_r1_mumod)
-#            dosc_at_fpimag = eval_dosc_fdom(p, fpeak_imag_r1_mumod)
-#            errors[i,j] = np.abs(dosc_at_fpreal - peak_real_r1_mumod)**2 + \
-#                          np.abs(dosc_at_fpimag - peak_imag_r1_mumod)**2
-    # --> numba function
-    args = (fpeak_real_r1_mumod, peak_real_r1_mumod, fpeak_imag_r1_mumod, peak_imag_r1_mumod)
+    args = (fpeak_real_r1_mumod, peak_real_r1_mumod, 
+            fpeak_imag_r1_mumod, peak_imag_r1_mumod)
     errors = dosc_mean_sq_dist_2f_tauf0grid(tau_vals, f0_vals, args)     
-    imin, jmin = np.unravel_index(errors.argmin(),errors.shape)
+    imin, jmin = np.unravel_index(errors.argmin(), errors.shape)
     tau = tau_vals[imin]
     f0 = f0_vals[jmin]
     
-    #...then refine
+    # then refine using gradient- or simplex-based opimization methods and 
+    # previously determined solution as starting point
     init_vals = [tau, f0]
-#    tau_lb = np.max([0.0, tau-10]);  tau_ub = tau+5;
-#    f0_lb = np.max([0.0, f0-0.01]);  f0_ub = f0+0.05;
-#    bnds = ( (tau_lb, tau_ub), (f0_lb, f0_ub) )
-#    sol = scipy.optimize.minimize(dosc_mean_sq_dist_2f, init_vals, args=args, 
-#                                  method='L-BFGS-B', bounds=bnds, 
-#                                  options={'disp':False, 'ftol':1e-15, 'gtol':1e-10})
-    # !!! gradient-based optim methods do not work reliably here -- more precisely, 
-    # the discretization parameters to compute the derivatives (jacobian etc.) 
-    # appropriately have not yet been determined properly !!!    
+    # when using gradient-based optim. method the discretization parameter values 
+    # to compute the derivatives (jacobian etc.) need to be determined first; 
+    # instead we here use a simplex-based method
     if f0==0:                     
         sol = scipy.optimize.minimize(dosc_mean_sq_dist_2f, tau, args=args,
-                                      method='Nelder-Mead', options={'xtol':1e-9, 'ftol':1e-9})                 
-        #print sol  #TEMP  
+                                      method='Nelder-Mead', 
+                                      options={'xtol':1e-9, 'ftol':1e-9})
         tau = sol.x
         f0 = 0.0
     else:
         sol = scipy.optimize.minimize(dosc_mean_sq_dist_2f, init_vals, args=args,
-                                      method='Nelder-Mead', options={'xtol':1e-9, 'ftol':1e-9})                 
-        #print sol  #TEMP  
+                                      method='Nelder-Mead', 
+                                      options={'xtol':1e-9, 'ftol':1e-9})
         tau, f0 = sol.x  
     return tau, f0
                                  
-                         
+             
+            
 def dosc_mean_sq_dist_2f(p, *args):
     f_val1, r1_val1, f_val2, r1_val2 = args
     if np.size(p)<2:
@@ -598,8 +581,9 @@ def dosc_mean_sq_dist_2f(p, *args):
     dosc_at_f1 = eval_dosc_fdom(p, f_val1)
     dosc_at_f2 = eval_dosc_fdom(p, f_val2)
     error = np.abs(dosc_at_f1 - r1_val1)**2 + np.abs(dosc_at_f2 - r1_val2)**2  
-    # correct normalization for mean squared error not important
+    # correct normalization for mean squared error is not important for optim.
     return error
+
 
 
 @numba.njit
@@ -620,6 +604,7 @@ def dosc_mean_sq_dist_2f_tauf0grid(tau_vals, f0_vals, args):
     return errors  
 
 
+
 @numba.njit
 def eval_dosc_fdom(p, f):
     tau = p[0]  
@@ -627,7 +612,6 @@ def eval_dosc_fdom(p, f):
     out = (1.0 + (2*np.pi*f0*tau)**2) / 2 * \
           ( 1.0 / (1 + 2*np.pi*1j*tau*(f-f0)) + 1.0/ (1 + 2*np.pi*1j*tau*(f+f0)) )
     return out
-
 
 
 
@@ -643,13 +627,15 @@ def load(filepath, input_dict, quantities, param_dict):
         for q in quantities:
             input_dict[q] = h5file.get_node(root, q).read()            
                    
-        # loading params
-        # only overwrite what is in the file. not start params from scratch. otherwise: uncomment following line
+        # loading parameters
+        # only overwrite what is in the file, do not start params from scratch, 
+        # otherwise: uncomment following line
         #param_dict = {} 
         for child in root.params._f_walknodes('Array'):
             param_dict[child._v_name] = child.read()[0]
         for group in root.params._f_walk_groups():
-            if group != root.params: # walk group first yields the group itself then its children
+            if group != root.params: # walk group first yields the group itself, 
+                                     # then its children
                 param_dict[group._v_name] = {}
                 for subchild in group._f_walknodes('Array'):
                     param_dict[group._v_name][subchild._v_name] = subchild.read()[0]            
@@ -703,7 +689,8 @@ def save(filepath, output_dict, param_dict):
 
 # PLOTTING FUNCTIONS -----------------------------------------------------------
 
-def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot, mus_plot, sigmas_plot):
+def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot, 
+                             mus_plot, sigmas_plot):
     
     mu_vals = quantities_dict['mu_vals']
     sigma_vals = quantities_dict['sigma_vals']   
@@ -726,7 +713,8 @@ def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot,
             ax1 = plt.subplot(1, 4, 1)
             # labels
             if k_j in [0, N_sigma//2, N_sigma-1]:
-                siglabel = '$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[j])
+                siglabel = '$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(
+                            sigma_vals[j])
                            
             else:
                 siglabel = None
@@ -741,7 +729,6 @@ def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot,
                 plt.title(r'$r_{\infty}$', fontsize=14)
                 plt.ylabel('[kHz]', fontsize=12)
                 plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
-                #plt.ylim([-1, 46])
             
                                
         if 'V_mean_ss' in quantity_names:
@@ -756,7 +743,6 @@ def plot_quantities_forpaper(quantities_dict, quantity_names, sigmas_quant_plot,
                 plt.title('$\langle V \\rangle_{\infty}$', fontsize=14)
                 plt.ylabel('[mV]', fontsize=12)
                 plt.xlabel('$\mu$ [mV/ms]', fontsize=12)
-                #plt.ylim([-1, 46])
             if k_j==N_sigma-1:
                 plt.legend(loc='best')
         
@@ -810,10 +796,11 @@ def plot_quantities(quantities_dict, quantity_names, sigmas_plot):
         linecolor = rgb
         
         if 'r_ss' in quantity_names:
-            ax1 = plt.subplot(4, 2, 1)
+            ax1 = plt.subplot(3, 2, 1)
             # labels
             if k_j in [0, N_sigma//2, N_sigma-1]:
-                siglabel = '$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[j])
+                siglabel = '$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(
+                            sigma_vals[j])
                            
             else:
                 siglabel = None
@@ -827,59 +814,44 @@ def plot_quantities(quantities_dict, quantity_names, sigmas_plot):
                 plt.legend(loc='best')
         
         if 'V_mean_ss' in quantity_names:
-            plt.subplot(4, 2, 2, sharex=ax1)              
+            plt.subplot(3, 2, 2, sharex=ax1)              
             plt.plot(mu_vals[inds_mu_plot], quantities_dict['V_mean_ss'][inds_mu_plot,j], 
                      label=siglabel, color=linecolor)
             if k_j==0:
                 plt.ylabel('$\langle V \\rangle_{\infty}$ [mV]')
             
         if 'tau_mu_exp' in quantity_names:
-            plt.subplot(4, 2, 3, sharex=ax1)
+            plt.subplot(3, 2, 3, sharex=ax1)
             plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau_mu_exp'][inds_mu_plot,j], 
                      label=siglabel, color=linecolor)
             if k_j==0:
                 plt.ylabel(r'$\tau_{\mu}$ [ms]')
             
         if 'tau_sigma_exp' in quantity_names:
-            plt.subplot(4, 2, 4, sharex=ax1)
+            plt.subplot(3, 2, 4, sharex=ax1)
             plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau_sigma_exp'][inds_mu_plot,j], 
                      label=siglabel, color=linecolor)
             if k_j==0:
                 plt.ylabel(r'$\tau_{\sigma}$[ms]')
         
         if 'tau_mu_dosc' in quantity_names:
-            plt.subplot(4, 2, 5, sharex=ax1)           
+            plt.subplot(3, 2, 5, sharex=ax1)           
             plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau_mu_dosc'][inds_mu_plot,j], 
                      label=siglabel, color=linecolor)
             if k_j==0:
-                plt.ylabel(r'$\tilde{\tau}$ [ms]')
+                plt.ylabel(r'$\tau$ [ms]')
                 plt.xlabel('$\mu$ [mV/ms]')
         
         if 'f0_mu_dosc' in quantity_names:
-            plt.subplot(4, 2, 6, sharex=ax1)                       
+            plt.subplot(3, 2, 6, sharex=ax1)                       
             plt.plot(mu_vals[inds_mu_plot], quantities_dict['f0_mu_dosc'][inds_mu_plot,j], 
                      label=siglabel, color=linecolor)
             if k_j==0:
-                plt.ylabel(r'$\tilde{f}$ [kHz]')
+                plt.ylabel(r'$\omega/2\pi$ [kHz]')
                 plt.xlabel('$\mu$ [mV/ms]')
                 
-        if 'tau_sigma_dosc' in quantity_names:
-            plt.subplot(4, 2, 7, sharex=ax1)           
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['tau_sigma_dosc'][inds_mu_plot,j], 
-                     label=siglabel, color=linecolor)
-            if k_j==0:
-                plt.ylabel(r'$\tilde{\tau}$ [ms]')
-                plt.xlabel('$\mu$ [mV/ms]')
-        
-        if 'f0_sigma_dosc' in quantity_names:
-            plt.subplot(4, 2, 8, sharex=ax1)                       
-            plt.plot(mu_vals[inds_mu_plot], quantities_dict['f0_sigma_dosc'][inds_mu_plot,j], 
-                     label=siglabel, color=linecolor)
-            if k_j==0:
-                plt.ylabel(r'$\tilde{f}$ [kHz]')
-                plt.xlabel('$\mu$ [mV/ms]')
     
-    if 'tau1_mu_bedosc' in quantity_names:
+    if 'tau1_mu_bedosc' in quantity_names:  # not included here
         plt.figure()
         plt.suptitle('LN quantities for bexdox variant')
         for k_j, j in enumerate(inds_sigma_plot):
@@ -918,6 +890,7 @@ def plot_quantities(quantities_dict, quantity_names, sigmas_plot):
     plt.show()
             
         
+    
 def plot_filters(output_dict, quantities_dict, output_names, params, 
                  mus_plot, sigmas_plot, recalc_filters):
     
@@ -940,13 +913,10 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
     dt = 1.0/(df*n)  #ms
     t_vals = np.arange(0,n)*dt    
     tmax = 50
-    # note that dt for filter is 1/(df*(2*len(f_vals)+1)) 
-    # (factor 2 for appended negative frequencies, +1 for appended zero freq.)
-    #  not calculating them explicitly)
-    ### note that response to f=0 Hz modulation should be equal to the integral
-    ### of the filter in time domain (0 to inf): D_0
-    ### r1 for pos. and neg. frequencies are complex conjugates
-    # TODO: hint to where can this be seen
+    # note that dt for the filter is 1/(df*(2*len(f_vals)+1)), 
+    # factor 2 for appended negative frequencies, +1 for appended zero freq.,
+    # both not calculated explicitly because rate response r1 for pos. and neg. 
+    # frequencies are complex conjugates, and r1 for f=0 is obtained from steady state
     
     inds_mu_plot = [np.argmin(np.abs(mu_vals-mus)) for mus in mus_plot]  
     inds_sigma_plot = [np.argmin(np.abs(sigma_vals-sig)) for sig in sigmas_plot]    
@@ -960,11 +930,8 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
             for k_imu, imu in enumerate(inds_mu_plot):           
                 plt.subplot(N_sigma,N_mu,k_isig*N_mu+k_imu+1)                
                 
-                # scaling factor for rate response (rather than filter) fit:
+                # scaling factor (see Eq. 79 in the paper)
                 drdmu = output_dict['dr_ss_dmu'][imu,isig]
-                # TODO: drdmu and r1_mumod[0] might not match in some cases:
-                # could visualize filters instead with time integral = 1 = 
-                # value of fourier transform at f=0
                 
                 # analytical exponential fit (using asymptotics)
                 if params['deltaT']>0:  #otherwise it makes no sense
@@ -990,7 +957,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                                  1.0/(1.0 + 2*np.pi*1j*tau*(f_vals+f0)) )
                     plt.loglog(1000*f_vals[f_vals<=1], 1000*np.abs(dosc_fit[f_vals<=1]), 'm')
                                                 
-                # semi-analytical bi-exp, damped oscillator fit
+                # semi-analytical bi-exp, damped oscillator fit (not included here)
                 if 'tau1_mu_bedosc' in quantities_dict.keys():
                     tau1 = quantities_dict['tau1_mu_bedosc'][imu,isig]
                     tau2 = quantities_dict['tau2_mu_bedosc'][imu,isig]
@@ -1006,11 +973,8 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 if recalc_filters:
                     tmp_dict = {};  tmp_output_name = ['r1_mumod']; save_rmod = True
                     print('')
-                    print('(Re)computing {} at higher resolution for plot'.format(tmp_output_name))
-#                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
-#                                                               [sigma_vals[isig]],
-#                                                               params_tmp, tmp_dict,
-#                                                               tmp_output_name)
+                    print('(Re)computing {} at higher resolution for plot'.format(
+                            tmp_output_name))
                     tmp_dict, _ = calc_EIF_output_and_cascade_quants([mu_vals[imu]],
                                                                      [sigma_vals[isig]],
                                                                      params_tmp, tmp_dict,
@@ -1027,33 +991,10 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 plt.ylim([plt_min, plt_max])
                 plt.xlim([1000*f_vals[0], 1000])
                 if k_imu==0:
-                    plt.ylabel('$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(sigma_vals[isig]))
+                    plt.ylabel('$\sigma={0:.3}$ [mV/$\sqrt{{\mathrm{{ms}}}}$]'.format(
+                                sigma_vals[isig]))
                 if k_isig==len(inds_sigma_plot)-1:    
                     plt.xlabel('$\mu={0:.3}$ [mV/ms]'.format(mu_vals[imu]))
-#                if count<=ncols
-#                  title('$|\hat{R}_{\mu}(f)|$','Interpreter','latex');
-#                end
-#                if mod(count,ncols)==1
-#                  ylabel(['$\sigma =$' num2str(presimdata.sigmarange(is))], ...
-#                          'Interpreter','latex');
-#                end
-#                if mod(count,ncols)==1 && count>ncols*(nrows-1)
-#                  ylabel(['$\sigma =$' num2str(presimdata.sigmarange(is)) ...
-#                          ' mV/$\sqrt{\mathrm{ms}}$'],'Interpreter','latex');
-#                end
-#                if count>ncols*(nrows-1)
-#                  xlabel(['$\mu =$' num2str(presimdata.Irange(iI)/taum)], ...
-#                          'Interpreter','latex');
-#                  set(gca,'xlim',[0 1000],'xtick',...
-#                    [1 10 100 1000],'YTickLabel',[]);   
-#                else
-#                  set(gca,'xlim',[0 1000],'xtick',...
-#                    [1 10 100 1000],'xticklabel',[],'yticklabel',[]);
-#                end
-#                if count>ncols*(nrows-1) && mod(count,ncols)==0
-#                  xlabel(['$\mu =$' num2str(presimdata.Irange(iI)/taum) ...
-#                          ' mV/ms'],'Interpreter','latex');  
-#                end
                 
     if 'r1_sigmamod' in output_names:
         plt.figure()
@@ -1062,12 +1003,12 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
             for k_imu, imu in enumerate(inds_mu_plot):           
                 plt.subplot(N_sigma,N_mu,k_isig*N_mu+k_imu+1)                
                 
-                # scaling factor for rate response (rather than filter) fit:
+                # scaling factor (see Eq. 80 in the paper)
                 drdsigma = output_dict['dr_ss_dsigma'][imu,isig]
                    
                 # semi-analytical exponential fit
                 if 'tau_sigma_exp' in quantities_dict.keys():
-                    if drdsigma>0:  # otherwise we use delta filter  
+                    if drdsigma>0:  # see the paper before Eq. 89
                         tau = quantities_dict['tau_sigma_exp'][imu,isig]
                         A = 1.0/tau
                         exp_fit = drdsigma * A*tau/(1.0 + 2*np.pi*1j*f_vals*tau)
@@ -1075,7 +1016,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 
                 # semi-analytical damped oscillator fit
                 if 'tau_sigma_dosc' in quantities_dict.keys():
-                    if drdsigma>0:  # otherwise we use delta filter  
+                    if drdsigma>0:  # otherwise we use a "delta" filter
                         tau = quantities_dict['tau_sigma_dosc'][imu,isig]
                         f0 = quantities_dict['f0_sigma_dosc'][imu,isig]
                         A = (1.0 + (2*np.pi*f0*tau)**2)/tau
@@ -1088,11 +1029,8 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 if recalc_filters:
                     tmp_dict = {};  tmp_output_name = ['r1_sigmamod'];  save_rmod = True
                     print('')
-                    print('(Re)computing {} at higher resolution for plot'.format(tmp_output_name))
-#                    tmp_dict = EIF_steadystate_and_linresponse([mu_vals[imu]],
-#                                                               [sigma_vals[isig]],
-#                                                               params_tmp, tmp_dict,
-#                                                               tmp_output_name)
+                    print('(Re)computing {} at higher resolution for plot'.format(
+                            tmp_output_name))
                     tmp_dict, _ = calc_EIF_output_and_cascade_quants([mu_vals[imu]],
                                                                      [sigma_vals[isig]],
                                                                      params_tmp, tmp_dict,
@@ -1116,7 +1054,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
             for k_imu, imu in enumerate(inds_mu_plot):           
                 plt.subplot(N_sigma,N_mu,k_isig*N_mu+k_imu+1)                
                 
-                # scaling factor for rate response (rather than filter) fit:
+                # scaling factor (see Eq. 79 in the paper)
                 drdmu = output_dict['dr_ss_dmu'][imu,isig]
                 
                 # analytical exponential fit (using asymptotics)
@@ -1141,7 +1079,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                     dosc_fit = drdmu * A*np.exp(-t_vals/tau)*np.cos(2*np.pi*f0*t_vals)
                     plt.plot(t_vals[inds], 1000*dosc_fit[inds], 'm')
                 
-                # semi-analytical bi-exp, damped oscillator fit
+                # semi-analytical bi-exp, damped oscillator fit (not included here)
                 if 'tau1_mu_bedosc' in quantities_dict.keys():
                     tau1 = quantities_dict['tau1_mu_bedosc'][imu,isig]
                     tau2 = quantities_dict['tau2_mu_bedosc'][imu,isig]
@@ -1158,9 +1096,8 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 else:
                     r1_mumod = output_dict['r1_mumod'][imu,isig,:]  #1/mV
                 # linear filter (ifft of rate response)
-                # get mumod rate response in the right shape so that ifft can be applied
+                # get mumod rate response in the right shape so that ifft can be applied;
                 # for info on the reshaping above, see numpy documentation on ifft 
-                # (numpy.fft.ifft)
                 if any(f_vals<0):
                     r1_reshaped = np.concatenate([np.array([drdmu]), r1_mumod])
                 else:
@@ -1168,10 +1105,9 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                                                   np.flipud(np.conj(r1_mumod))])
                 mu_filter_unnorm = np.fft.ifft(r1_reshaped)/dt  #kHz/mV
                 # minor correction to avoid plotting errors (vanishingly small 
-                # negative values and imaginary parts might occur for numerical reasons)
+                # neg. values and imag. parts might occur for numerical reasons)
                 mu_filter_unnorm = np.real(mu_filter_unnorm)
-                plt.plot(t_vals[inds], 1000*mu_filter_unnorm[inds], 'k')
-                
+                plt.plot(t_vals[inds], 1000*mu_filter_unnorm[inds], 'k')     
                 #plt_min = np.min(mu_filter_unnorm[inds])
                 plt_max = np.max(1000*mu_filter_unnorm[inds])
                 plt.ylim([-0.12*plt_max, 1.2*plt_max]) 
@@ -1186,20 +1122,12 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
             for k_imu, imu in enumerate(inds_mu_plot):           
                 plt.subplot(N_sigma,N_mu,k_isig*N_mu+k_imu+1)                
                 
-                # scaling factor for rate response (rather than filter) fit:
+                # scaling factor (see Eq. 80 in the paper)
                 drdsigma = output_dict['dr_ss_dsigma'][imu,isig]
-                #print mu_vals[imu], sigma_vals[isig], drdsigma  #TEMP
-                
-                ## analytical exponential fit (using asymptotics)
-                #tau = params['deltaT']**2*drdsigma/ \
-                #      (output_dict['r_ss'][imu,isig] * sigma_vals[isig])
-                #A = 1.0/tau
-                #exp_fit = drdsigma * A*np.exp(-t_vals/tau)
-                #plt.plot(t_vals[inds], 1000*exp_fit[inds], 'b--')
                 
                 # semi-analytical exponential fit
                 if 'tau_sigma_exp' in quantities_dict.keys():
-                    if drdsigma>0:  # otherwise we use delta filter   
+                    if drdsigma>0:  # otherwise we use a "delta" filter   
                         tau = quantities_dict['tau_sigma_exp'][imu,isig]
                         A = 1.0/tau
                         exp_fit = drdsigma * A*np.exp(-t_vals/tau)
@@ -1220,9 +1148,8 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                 else:
                     r1_sigmamod = output_dict['r1_sigmamod'][imu,isig,:]  #1/mV
                 # linear filter (ifft of rate response)
-                # get sigmamod rate response in the right shape so that ifft can be applied
+                # get sigmamod rate response in the right shape so that ifft can be applied;
                 # for info on the reshaping above, see numpy documentation on ifft 
-                # (numpy.fft.ifft)
                 if any(f_vals<0):
                     r1_reshaped = np.concatenate([np.array([drdsigma]), r1_sigmamod])
                 else:
@@ -1230,7 +1157,7 @@ def plot_filters(output_dict, quantities_dict, output_names, params,
                                                   np.flipud(np.conj(r1_sigmamod))])
                 sigma_filter_unnorm = np.fft.ifft(r1_reshaped)/dt  #kHz/mV
                 # minor correction to avoid plotting errors (vanishingly small 
-                # negative values and imaginary parts might occur for numerical reasons)
+                # neg. values and imag. parts might occur for numerical reasons)
                 sigma_filter_unnorm = np.real(sigma_filter_unnorm)
                 plt.plot(t_vals[inds], 1000*sigma_filter_unnorm[inds], 'k') 
                 plt_max = np.max(1000*sigma_filter_unnorm[inds])
