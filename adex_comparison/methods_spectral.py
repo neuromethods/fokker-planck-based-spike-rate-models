@@ -16,7 +16,7 @@ Work in progress since January 2014; current state: January 7, 2016
 from __future__ import division # omit unwanted integer division
 import math
 import cmath
-from warnings import warn, simplefilter
+from warnings import warn, simplefilterA
 import numpy as np
 from scipy.optimize import root
 from scipy.integrate import odeint # only used when 'lsoda' is on
@@ -25,19 +25,24 @@ import matplotlib.pyplot as plt
 import multiprocessing
 import itertools
 import time
-import tables
+import tableshand
 # for plotting
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
 import misc.utils
 
+enforce_numba = False
 # if numba is not installed define dummy jit decorators
 try:
     from numba import jit, njit
 except:
-    warn('numba missing, skipping just in time compilation')
-    jit = lambda func: func
-    njit = jit
+        if enforce_numba == True:
+            warn('Please install the numba-package for fast computation or set "enforce_numba" to False')
+            exit()
+        else:
+            warn('numba missing, skipping just in time compilation')
+            jit = lambda func: func
+            njit = jit
 
 # 1a) lambda_all, mu, sigma = specsolv.spectrum_load(filename, quantities=['r_inf', 'lambda_1',...])
 # 1b) lambda_all = specsolv.spectrum_calc_rectangle(musigma)
