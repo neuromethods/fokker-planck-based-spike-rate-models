@@ -16,7 +16,7 @@ Work in progress since January 2014; current state: January 7, 2016
 from __future__ import division # omit unwanted integer division
 import math
 import cmath
-from warnings import warn, simplefilterA
+from warnings import warn, simplefilter
 import numpy as np
 from scipy.optimize import root
 from scipy.integrate import odeint # only used when 'lsoda' is on
