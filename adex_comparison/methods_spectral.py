@@ -25,7 +25,7 @@ import matplotlib.pyplot as plt
 import multiprocessing
 import itertools
 import time
-import tableshand
+import tables
 # for plotting
 import matplotlib.colors as colors
 import matplotlib.cm as cmx
