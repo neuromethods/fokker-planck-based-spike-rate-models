@@ -23,20 +23,20 @@ import models.spec2_red.spec2_red_model as s2_red
 # what will be computed
 
 # network simulation
-run_network =  False
+run_network =  True
 # full fokker planck model
-run_fp =       False
+run_fp =       True
 
 # reduced models
 # ln cascade
 run_ln_exp =   True
-run_ln_dosc=   True
+run_ln_dos=   True
 run_ln_bexdos = False
 
 # spectral
 run_spec1    =    True
-run_spec2m   =    True
-run_spec2m_simple = True
+run_spec2   =    True
+run_spec2_red = True
 
 
 # use as default the parameters from file params.py
@@ -237,87 +237,79 @@ if filter_std:
 ext_input0 = [mu_ext, sigma_ext]
 
 # saving results in global results dict
-model_results = dict()
-model_results['input_mean'] = mu_ext
-model_results['input_sigma']= sigma_ext
-model_results['run_model'] = list()
+results = dict()
+results['input_mean'] = mu_ext
+results['input_sigma']= sigma_ext
+results['model_results'] = dict()
 
 
 
 print('\nModels run in {} mode.\n'.format('recurrent' if rec else 'feedforward'))
 
-# simulation of the brian network
-# input is computed with respect to the smallest time step (min(uni_dt, net_dt, fp_dt)) and subsequently interpolated for all other models
-
+# brian network sim
 if run_network:
     ext_input = interpolate_input(ext_input0,params,'net')
-    # use the brian simulation with a,b= array
-    model_results['results_net'] = \
+    results['model_results']['net'] = \
         net.network_sim(ext_input, params, rec = rec)
-    model_results['run_model'].append('net')
 
-#fokker planck equation solved using the Scharfetter Gummel representation
+
+#fokker planck equation solved using the Scharfetter-Gummel-flux approximation 
 if run_fp:
     ext_input = interpolate_input(ext_input0, params, 'fp')
-    model_results['results_fp'] = \
+    results['model_results']['fp'] = \
         fp_sg.sim_fp_sg(ext_input, params, rec=rec)
-    model_results['run_model'].append('fp')
 
 #reduced models
+
+# models based on a linear-nonlinear cascade
 if run_ln_exp:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
-    model_results['results_ln_exp'] = \
+    results['model_results']['ln_exp'] = \
         lnexp.run_ln_exp(ext_input, params, ln_data,
                          rec_vars= params['rec_lne'], rec= rec)
-    model_results['run_model'].append('ln_exp')
 
-if run_ln_dosc:
+if run_ln_dos:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
-    # currently uses the 'old' ln dosc version
-    model_results['results_ln_dosc'] = \
-        lndos.run_ln_dosc(ext_input, params,ln_data,
+    results['model_results']['ln_dos'] = \
+        lndos.run_ln_dos(ext_input, params,ln_data,
                            rec_vars= params['rec_lnd'],
                            rec= rec)
-    model_results['run_model'].append('ln_dosc')
 
+# models based on a spectral decomposition of the Fokker-Planck operator
 if run_ln_bexdos:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
-    model_results['results_ln_bexdos'] = \
+    results['model_results']['ln_bexdos'] = \
         lnbexdos.run_ln_bexdos(ext_input, params,ln_data,
                                rec_vars=['wm'], rec = rec)
-    model_results['run_model'].append('ln_bexdos')
 
 
 if run_spec1:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
-    model_results['results_spec1'] = \
+    results['model_results']['spec1'] = \
         s1.run_spec1(ext_input, params, spec_data,
                      rec_vars=params['rec_s1'],
                      rec = rec)
-    model_results['run_model'].append('spec1')
 
-if run_spec2m:
+if run_spec2:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
-    model_results['results_spec2m'] = \
-        s2.run_spec2m(ext_input, params, spec_data,
+    results['model_results']['spec2'] = \
+        s2.run_spec2(ext_input, params, spec_data,
                        rec_vars=['wm'],
                        rec=rec)
-    model_results['run_model'].append('spec2m')
 
-if run_spec2m_simple:
+if run_spec2_red:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
-    model_results['results_spec2m_simple'] = \
-        s2_red.run_spec2m_simple(ext_input, params, rec_vars=params['rec_sm'],
+    results['model_results']['spec2_red'] = \
+        s2_red.run_spec2_red(ext_input, params, rec_vars=params['rec_sm'],
                                      rec=rec, filename_h5 = spec_data)
-    model_results['run_model'].append('spec2m_simple')
-
 
 
 
 # plotting section
-# what will be plottet
 nr_p = plot_rates + plot_adapt + plot_input
 fig = plt.figure(); pidx = 1
+
+# plot inputs
 if plot_input:
     ax_mu = fig.add_subplot(nr_p, 1, pidx)
     plt.plot(t_ext, mu_ext_orig, color = 'k', lw=1.5) if filter_mean else 0
@@ -331,14 +323,14 @@ if plot_input:
                [line_mu_final[0].get_label(), line_sig_final[0].get_label()])
     pidx +=1
 
+# plot rates
 if plot_rates:
     ax_rate = fig.add_subplot(nr_p, 1, pidx, sharex=ax_mu)
-    for model in model_results['run_model']:
+    for model in results['model_results']:
         color = params['color'][model]
         lw = params['lw'][model]
-        key = 'results_{}'.format(model)
-        time = model_results[key]['t']
-        rates = model_results[key]['r']
+        time = results['model_results'][model]['t']
+        rates = results['model_results'][model]['r']
         plt.plot(time, rates, label = model, color = color, lw=lw)
         plt.ylabel('r [Hz]')
         plt.legend()
@@ -347,23 +339,21 @@ if plot_rates:
 # plot adaptation current
 if plot_adapt:
     ax_adapt = fig.add_subplot(nr_p, 1, pidx, sharex=ax_mu)
-    for model in model_results['run_model']:
+    for model in results['model_results']:
         color = params['color'][model]
         lw = params['lw'][model]
-        key = 'results_{}'.format(model)
-        time = model_results[key]['t']
-        print(model)
-        wm = model_results[key]['wm']
+        time = results['model_results'][model]['t']
+        wm = results['model_results'][model]['wm']
         wm_shape = wm.shape
         time_shape = time.shape
         plt.ylabel('<wm> [pA]')
         plt.plot(time, wm, color = color, lw = lw)
 
     # plot also mean+std/mean-std if net was computed
-    if 'net' in model_results['run_model']:
-        time = model_results['results_net']['t']
-        wm = model_results['results_net']['wm']
-        w_std = model_results['results_net']['w_std']
+    if 'net' in results:
+        time = results['model_results']['net']['t']
+        wm = results['model_results']['net']['wm']
+        w_std = results['model_results']['net']['w_std']
         wm_plus = wm + w_std
         wm_minus = wm - w_std
         plt.fill_between(time,wm_minus, wm_plus, color = 'lightpink')
