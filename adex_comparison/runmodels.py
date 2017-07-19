@@ -11,11 +11,11 @@ from misc.utils import generate_OUinput, x_filter, get_changing_input, interpola
 import models.brian2.network_sim as net
 import models.fvm_sg.fokker_planck as fp_sg
 import models.ln_exp.ln_exp_model as lnexp
-import models.ln_dosc.ln_dosc_model as lndosc
+import models.ln_dos.ln_dosc_model as lndosc
 import models.ln_bexdos.ln_bexdos_model as lnbexdos
-import models.spectral1.spectral1_model as s1
-import models.spectral2m.spectral2m_model as s2m
-import models.spectral2m_simple.spectral2m_simple_model as s2m_simple
+import models.spec1.spectral1_model as s1
+import models.spec2.spectral2m_model as s2m
+import models.spec2_red.spectral2m_simple_model as s2m_simple
 
 # use the following in IPython for qt plots: %matplotlib qt
 
@@ -83,8 +83,8 @@ params['uni_int_order'] = 2
 params['min_dt'] = min(params['uni_dt'], params['net_dt'],params['fp_dt'])
 
 
-ln_data = 'quantities_cascade_noref.h5'
-spec_data = 'quantities_spectral_noref.h5'
+ln_data = 'quantities_cascade.h5'
+spec_data = 'quantities_spectral.h5'
 params['t_ref'] = 0.0
 
 # plotting section
