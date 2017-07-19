@@ -67,7 +67,8 @@ def get_params():
 
     #FOKKER-PLANCK IMPLEMENTATION (SCHARFETTER-GUMMEL)
     params['N_centers_fp'] = 1000     # number of centers for V-space discretization
-    params['fp_dt'] = 0.05  #[ms]0.05*ms
+    params['fp_dt'] = 0.05  # [ms]
+    params['integration_method'] = 'implicit' 
 
     #initial conditions for the fp model. by default they match initial conditions for the net
     params['fp_v_init'] = params['net_v_init'] #'delta'#'uniform','normal', 'delta'
@@ -109,8 +110,7 @@ def get_params():
                                        # must be small otherwise it possibly convergence to wrong eigval!
     params['lambda_real_abs_thresh'] = 3.0 # ignore all eigenvalue abs realparts below this value
     # => ODE solver
-    params['ode_method'] = 'magnus' # one of 'lsoda', 'richardson', 'magnus' (preferred)
-    params['grid_V_points'] = 20000 # discretization for richardson&magnus, +for eigfuncs if lsoda
+    params['grid_V_points'] = 20000 # discretization for exponential backwards integration
     # => algebraic solver
     params['solver_abstol'] = 1e-4 # absolute tolerance (scipy solver wrapper)
     params['solver_maxrefinements'] = 30 #COMMENT THIS -- NOT INCLUDED IN PAPER # mu, sigma refinements (interval bisection) if non-convergence
@@ -132,24 +132,6 @@ def get_params():
     params['tolerance_conjugation'] = 1e-4 #COMMENT THIS -- NOT INCLUDED IN PAPER  also: imag parts significance (to be different from zero)
     # => misc
     params['verboselevel'] = 0          # 1: some debug text, 2: +intermediateplots, 3: verbose text
-    # old/deprecated parameters
-    # => old (lsoda) ODE solver
-    # params['odeint_maxsteps'] = 50000   # max. no of ODE integration steps per (sub)interval
-    # params['odeint_atol'] = 1e-10 # absolute (local) error (for stepsize control)
-    # params['odeint_rtol'] = 1e-10 # relative (local) error (for stepsize control)
-    # => solver hacks
-    # params['solver_abstol_threshold_philb'] = 10.0 # only apply abs tolerance if norm of p(V_lb) is smaller than this
-    # params['solver_abstol_threshold_lambdareal'] = 1.0  
-    # params['solver_hoptol'] = 0.01 # backwards comparison tolerance (prevents curve hopping) 
-    # params['solver_hopfraction'] = 0.01 # determines the backward (directional) difference step (in units of the last mu, sigma step)
-    # params['eps_solver_musigma_factor'] = 100 # for next lambda initialization
-    # => misc
-    #     params['postproc_complex_conj'] = True # enforce (ordered) complex conjugated pairs s.t. postproc_imag_tol 
-    # params['postproc_imag_clean_smallvalues'] = True # whether to set imag. parts below postproc_imag_tol to zero 
-    # params['postproc_imag_tol'] = 1e-1 # eigenvalues with smaller imaginary parts are made real; also affects conjugation
-    # params['postproc_detect_double_modes'] = True
-    # params['postproc_normalization_tol'] = 2e-4 # dot product between psi_m, phi_n smaller this tol => orthonormal
-    # params['grid_V_points_quantities'] = 20000
 
 
 
@@ -178,9 +160,9 @@ def get_params():
 
     #for plotting
     #colors[modelname] = color
-    params['color'] = {'net':'b', 'fp':'0.6','ln_exp':'darkmagenta', 'ln_dosc':'cyan',
+    params['color'] = {'net':'b', 'fp':'0.6','ln_exp':'darkmagenta', 'ln_dos':'cyan',
                        'ln_bexdos':'green', 'spec1':'darkgreen', 
-                       'spec2m_simple':'pink', 'spec2m':'orangered'}
-    params['lw'] = {'net':'1', 'fp':'2','ln_exp':'1', 'ln_dosc':'2', 'ln_bexdos':'2',
-                    'spec1':'1', 'spec2m_simple':'1', 'spec2m': '1'}
+                       'spec2_red':'pink', 'spec2':'orangered'}
+    params['lw'] = {'net':'1', 'fp':'2','ln_exp':'1', 'ln_dos':'2', 'ln_bexdos':'2',
+                    'spec1':'1', 'spec2_red':'1', 'spec2': '1'}
     return params
