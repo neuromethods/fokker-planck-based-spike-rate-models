@@ -11,11 +11,11 @@ from misc.utils import generate_OUinput, x_filter, get_changing_input, interpola
 import models.brian2.network_sim as net
 import models.fvm_sg.fokker_planck as fp_sg
 import models.ln_exp.ln_exp_model as lnexp
-import models.ln_dos.ln_dosc_model as lndosc
+import models.ln_dos.ln_dos_model as lndos
 import models.ln_bexdos.ln_bexdos_model as lnbexdos
-import models.spec1.spectral1_model as s1
-import models.spec2.spectral2m_model as s2m
-import models.spec2_red.spectral2m_simple_model as s2m_simple
+import models.spec1.spec1_model as s1
+import models.spec2.spec2_model as s2
+import models.spec2_red.spec2_red_model as s2_red
 
 # use the following in IPython for qt plots: %matplotlib qt
 
@@ -23,9 +23,9 @@ import models.spec2_red.spectral2m_simple_model as s2m_simple
 # what will be computed
 
 # network simulation
-run_network =  True
+run_network =  False
 # full fokker planck model
-run_fp =       True
+run_fp =       False
 
 # reduced models
 # ln cascade
@@ -36,7 +36,7 @@ run_ln_bexdos = False
 # spectral
 run_spec1    =    True
 run_spec2m   =    True
-run_spec2m_simple = False
+run_spec2m_simple = True
 
 
 # use as default the parameters from file params.py
@@ -275,7 +275,7 @@ if run_ln_dosc:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     # currently uses the 'old' ln dosc version
     model_results['results_ln_dosc'] = \
-        lndosc.run_ln_dosc(ext_input, params,ln_data,
+        lndos.run_ln_dosc(ext_input, params,ln_data,
                            rec_vars= params['rec_lnd'],
                            rec= rec)
     model_results['run_model'].append('ln_dosc')
@@ -299,7 +299,7 @@ if run_spec1:
 if run_spec2m:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     model_results['results_spec2m'] = \
-        s2m.run_spec2m(ext_input, params, spec_data,
+        s2.run_spec2m(ext_input, params, spec_data,
                        rec_vars=['wm'],
                        rec=rec)
     model_results['run_model'].append('spec2m')
@@ -307,7 +307,7 @@ if run_spec2m:
 if run_spec2m_simple:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     model_results['results_spec2m_simple'] = \
-        s2m_simple.run_spec2m_simple(ext_input, params, rec_vars=params['rec_sm'],
+        s2_red.run_spec2m_simple(ext_input, params, rec_vars=params['rec_sm'],
                                      rec=rec, filename_h5 = spec_data)
     model_results['run_model'].append('spec2m_simple')
 
