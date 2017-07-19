@@ -46,8 +46,6 @@ params = params.get_params()
 # runtime options
 # run simulation of uncoupled (rec=False) or recurrently coupled simulation (rec=True)
 rec = True
-# run models finite size mode
-FS = False
 
 params['runtime'] = 3000.
 # number of neurons
@@ -270,7 +268,7 @@ if run_ln_exp:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     model_results['results_ln_exp'] = \
         lnexp.run_ln_exp(ext_input, params, ln_data,
-                         rec_vars= params['rec_lne'], rec= rec, FS=FS)
+                         rec_vars= params['rec_lne'], rec= rec)
     model_results['run_model'].append('ln_exp')
 
 if run_ln_dosc:
@@ -279,14 +277,14 @@ if run_ln_dosc:
     model_results['results_ln_dosc'] = \
         lndosc.run_ln_dosc(ext_input, params,ln_data,
                            rec_vars= params['rec_lnd'],
-                           rec= rec, FS = FS)
+                           rec= rec)
     model_results['run_model'].append('ln_dosc')
 
 if run_ln_bexdos:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     model_results['results_ln_bexdos'] = \
         lnbexdos.run_ln_bexdos(ext_input, params,ln_data,
-                               rec_vars=['wm'], rec = rec, FS=FS)
+                               rec_vars=['wm'], rec = rec)
     model_results['run_model'].append('ln_bexdos')
 
 
@@ -295,7 +293,7 @@ if run_spec1:
     model_results['results_spec1'] = \
         s1.run_spec1(ext_input, params, spec_data,
                      rec_vars=params['rec_s1'],
-                     rec = rec, FS = FS)
+                     rec = rec)
     model_results['run_model'].append('spec1')
 
 if run_spec2m:
@@ -303,14 +301,14 @@ if run_spec2m:
     model_results['results_spec2m'] = \
         s2m.run_spec2m(ext_input, params, spec_data,
                        rec_vars=['wm'],
-                       rec=rec, FS = FS)
+                       rec=rec)
     model_results['run_model'].append('spec2m')
 
 if run_spec2m_simple:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     model_results['results_spec2m_simple'] = \
         s2m_simple.run_spec2m_simple(ext_input, params, rec_vars=params['rec_sm'],
-                                     rec=rec, FS = FS, filename_h5 = spec_data)
+                                     rec=rec, filename_h5 = spec_data)
     model_results['run_model'].append('spec2m_simple')
 
 
