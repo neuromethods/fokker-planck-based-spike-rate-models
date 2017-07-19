@@ -67,7 +67,8 @@ def get_params():
 
     #FOKKER-PLANCK IMPLEMENTATION (SCHARFETTER-GUMMEL)
     params['N_centers_fp'] = 1000     # number of centers for V-space discretization
-    params['fp_dt'] = 0.05  #[ms]0.05*ms
+    params['fp_dt'] = 0.05  # [ms]
+    params['integration_method'] = 'implicit' 
 
     #initial conditions for the fp model. by default they match initial conditions for the net
     params['fp_v_init'] = params['net_v_init'] #'delta'#'uniform','normal', 'delta'
