@@ -9,7 +9,7 @@ import time
 import params
 from misc.utils import generate_OUinput, x_filter, get_changing_input, interpolate_input
 import models.brian2.network_sim as net
-import models.fvm_sg.fokker_planck as fp_sg
+import models.fp.fokker_planck_model as fp
 import models.ln_exp.ln_exp_model as lnexp
 import models.ln_dos.ln_dos_model as lndos
 import models.ln_bexdos.ln_bexdos_model as lnbexdos
@@ -31,7 +31,7 @@ run_fp =       True
 # ln cascade
 run_ln_exp =   True
 run_ln_dos=   True
-run_ln_bexdos = False
+run_ln_bexdos = False 
 
 # spectral
 run_spec1    =    True
@@ -257,7 +257,7 @@ if run_network:
 if run_fp:
     ext_input = interpolate_input(ext_input0, params, 'fp')
     results['model_results']['fp'] = \
-        fp_sg.sim_fp_sg(ext_input, params, rec=rec)
+        fp.sim_fp_sg(ext_input, params, rec=rec)
 
 #reduced models
 
