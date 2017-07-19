@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 
-# script used in [Augustin, Ladenbauer, Baumann, Obermayer 2017, PLOS Comput Biol]
-# for computing the spectrum and associated quantities of the 
+# script for computing the spectrum and associated quantities of the 
 # Fokker-Planck operator for the exponential integrate-and-fire neuron model 
 # on a rectangle of input mean and standard deviation (mu, sigma)
 #
-# the SpectralSolver class (written by Moritz Augustin in 2016-2017) is used
+# the SpectralSolver class (written by Moritz Augustin in 2016-2017) is used here 
 #
 # author: Moritz Augustin <augustin@ni.tu-berlin.de>
 
+# Please cite the publication which has introduced the solver if you want to use it: 
+#    Augustin, Ladenbauer, Baumann, Obermayer (2017) PLOS Comput Biol
+    
 import sys
 sys.path.insert(1, '..')
 from methods_spectral import SpectralSolver, spectrum_enforce_complex_conjugation, \
@@ -305,6 +307,7 @@ if postprocess_quant:
     
     # remove artefacts due to proximity to double eigenvalues at the transition from real to complex
     # by taking the value of the nearest neighbor for those mu, sigma values
+    
     quantities_postprocess(quantities_dict, 
                            quant_names=['lambda_1', 'lambda_2',
                                         'f_1', 'f_2', 
