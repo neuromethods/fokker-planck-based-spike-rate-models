@@ -252,7 +252,7 @@ def compute_quantities_given_sigma(arg_tuple):
         
         return V_arr, phi_2, q_2
     
-    
+
     specsolve = SpectralSolver(params.copy())
                              
     # method for obtaining an eigenvalue at mu, sigma specified mu_sigma_target
@@ -305,7 +305,7 @@ def compute_quantities_given_sigma(arg_tuple):
         global psi_2_cache
         psi_2_cache = None
         
-    
+        # calculate quantities 
         for q in quant_names:
             
             
@@ -366,7 +366,84 @@ def compute_quantities_given_sigma(arg_tuple):
                 psi_r_2 = psi_2[k_r]
             
             
+            
+            # inner product (dmu Psi1, Phi1)
+            if q == 'C_mu_11':
+                ## dmu_Psi
+                # quantities for central difference for as approx. to the partial deriv
+                lambda_1_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_1_ij)
+                V_arr, psi_1_plus_mu = psi1(mu_i+dmu, sigma_j, lambda_1_plus_mu, cache=False)
                 
+                lambda_1_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_1_ij)
+                V_arr, psi_1_minus_mu = psi1(mu_i-dmu, sigma_j, lambda_1_minus_mu, cache=False)
+                
+                # compute finite-difference (partial derivative)
+                dpsi_1_dmu = (psi_1_plus_mu-psi_1_minus_mu)/(2*dmu)
+
+                ## Phi
+                V_arr, phi_1, q_1 = phi1(mu_i, sigma_j, lambda_1_ij)
+                
+                # compute inner product
+                C_mu_11 = inner_prod(dpsi_1_dmu, phi_1, V_arr)
+
+
+            if q == 'C_mu_12':
+                ## dmu_Psi
+                # quantities for central difference for as approx. to the partial deriv
+                lambda_1_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_1_ij)
+                V_arr, psi_1_plus_mu = psi1(mu_i+dmu, sigma_j, lambda_1_plus_mu, cache=False)
+
+                lambda_1_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_1_ij)
+                V_arr, psi_1_minus_mu = psi1(mu_i-dmu, sigma_j, lambda_1_minus_mu, cache=False)
+
+                # compute finite-difference (partial derivative)
+                dpsi_1_dmu = (psi_1_plus_mu-psi_1_minus_mu)/(2*dmu)
+
+                ## Phi
+                V_arr, phi_2, q_2 = phi2(mu_i, sigma_j, lambda_2_ij)
+
+                # compute inner product
+                C_mu_12 = inner_prod(dpsi_1_dmu, phi_2, V_arr)
+
+
+            if q == 'C_mu_21':
+                ## dmu_Psi
+                # quantities for central difference for as approx. to the partial deriv
+                lambda_2_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_2_ij)
+                V_arr, psi_2_plus_mu = psi2(mu_i+dmu, sigma_j, lambda_2_plus_mu, cache=False)
+
+                lambda_2_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_2_ij)
+                V_arr, psi_2_minus_mu = psi2(mu_i-dmu, sigma_j, lambda_2_minus_mu, cache=False)
+
+                # compute finite-difference (partial derivative)
+                dpsi_2_dmu = (psi_2_plus_mu-psi_2_minus_mu)/(2*dmu)
+
+                ## Phi
+                V_arr, phi_1, q_1 = phi1(mu_i, sigma_j, lambda_1_ij)
+
+                # compute inner product
+                C_mu_21 = inner_prod(dpsi_2_dmu, phi_1, V_arr)
+
+
+            if q == 'C_mu_22':
+                ## dmu_Psi
+                # quantities for central difference for as approx. to the partial deriv
+                lambda_2_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_2_ij)
+                V_arr, psi_2_plus_mu = psi2(mu_i+dmu, sigma_j, lambda_2_plus_mu, cache=False)
+
+                lambda_2_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_2_ij)
+                V_arr, psi_2_minus_mu = psi2(mu_i-dmu, sigma_j, lambda_2_minus_mu, cache=False)
+
+                # compute finite-difference (partial derivative)
+                dpsi_2_dmu = (psi_2_plus_mu-psi_2_minus_mu)/(2*dmu)
+
+                ## Phi
+                V_arr, phi_2, q_2 = phi2(mu_i, sigma_j, lambda_2_ij)
+
+                # compute inner product
+                C_mu_22 = inner_prod(dpsi_2_dmu, phi_2, V_arr)
+
+
             # inner product between (discretized) partial derivative of psi w.r.t mu and 
             # the stationary distribution of active (i.e. non refractory) neurons
             if q == 'c_mu_1':
@@ -393,7 +470,7 @@ def compute_quantities_given_sigma(arg_tuple):
                 if params['verboselevel'] > 0:                
                     print('c_mu_1={}'.format(c_mu_1))
               
-              
+
             if q == 'c_mu_2':
                 
                 # we need to evaluate psi_2(mu+-dmu) and thus lambda_2(mu+-dmu)
