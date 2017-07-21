@@ -121,7 +121,7 @@ def compute_eigenvalue_curve_given_sigma(arg_tuple):
     return (j, lambda_j_collapsed, comp_single_duration)
 
 
-def compute_quantities_given_sigma(arg_tuple):
+def  compute_quantities_given_sigma(arg_tuple):
     params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j = arg_tuple
     
     
@@ -144,7 +144,8 @@ def compute_quantities_given_sigma(arg_tuple):
             
         # complex quants
         elif q in ['f_1', 'f_2', 'psi_r_1', 'psi_r_2', 
-                   'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2']:
+                   'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
+                   'C_mu_11', 'C_mu_12', 'C_mu_21', 'C_mu_22']:
             quant_j[q] = np.zeros(N_mu) + 0j # complex dtype
             
         # unknown quants
@@ -366,7 +367,7 @@ def compute_quantities_given_sigma(arg_tuple):
                 psi_r_2 = psi_2[k_r]
             
             
-            
+            # new quantities for the a_dot-model
             # inner product (dmu Psi1, Phi1)
             if q == 'C_mu_11':
                 ## dmu_Psi
@@ -385,6 +386,7 @@ def compute_quantities_given_sigma(arg_tuple):
                 
                 # compute inner product
                 C_mu_11 = inner_prod(dpsi_1_dmu, phi_1, V_arr)
+
 
 
             if q == 'C_mu_12':
@@ -533,6 +535,7 @@ def compute_quantities_given_sigma(arg_tuple):
 
 
 
+
 def spectrum_enforce_complex_conjugation(lambda_all, mu_arr, sigma_arr, 
                                          tolerance_conjugation=1e-5, merge_dist=2, 
                                          conjugation_first_imag_negative=False):
@@ -622,7 +625,7 @@ class SpectralSolver(object):
                             for j in range(N_sigma)]
         
         comp_total_start = time.time()
-        
+
         if N_procs <= 1:
             # single processing version, i.e. loop
             pool = False
@@ -681,14 +684,15 @@ class SpectralSolver(object):
                 
             # complex quants
             elif q in ['f_1', 'f_2', 'psi_r_1', 'psi_r_2', 
-                       'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2']:
+                       'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
+                       'C_mu_11', 'C_mu_12', 'C_mu_21', 'C_mu_22']:
                 quantities_dict[q] = np.zeros((N_mu, N_sigma)) + 0j # complex dtype
         
         arg_tuple_list = [(self.params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j)
                             for j in range(N_sigma)]
         
         comp_total_start = time.time()
-        
+        N_procs = 1
         if N_procs <= 1:
             # single processing version, i.e. loop
             pool = False
@@ -701,6 +705,7 @@ class SpectralSolver(object):
         
         finished = 0
         for j, quantities_j_dict, runtime in result:
+
             finished += 1
             print(('mu-curve of quantities computed for sigma={sig} in {rt:.2}s, completed: {comp}/{tot}').
                   format(sig=sigma_arr[j], rt=runtime, comp=finished, tot=N_sigma))

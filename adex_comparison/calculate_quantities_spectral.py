@@ -57,10 +57,10 @@ N_sigma = 46 # sigma grid points  -- s.t. 0.5 to 5 is spaced with distance 0.1
 N_procs = cpu_count() # no of parallel processes for the spectrum/quantity computation
 
 # create input parameter grid (here only the mu and sigma arrays)
-mu = np.linspace(-1.5, 5., N_mu)  # mu (mean input) grid. note that a value of -1 
+mu = np.linspace(-1.5, 5., N_mu)  # mu (mean input) grid. note that a value of -1
                                   # for mu has been shown to be not small enough 
                                   # for having only real eigvals (for V_lb=-200)
-sigma = np.linspace(0.5, 5., N_sigma) # sigma (input noise intensity) grid. note that 
+sigma = np.linspace(0.5, 5., N_sigma) # sigma (input noise intensity) grid. note that
                                       # sigma_min=0.25 is too small as it 
                                       # shows very sensitive numerical behavior 
                                       # (eigenvalue pairs' real parts are very close by)
@@ -82,9 +82,9 @@ load_spec = True # loading spectrum from file skips computation unless loading f
 compute_spec = False # computes if not loaded
 postprocess_spectrum = False # enforce complex conjugation
 
-save_quant = True # save (and overwrite file) if quantity computation or postprocessing happened
-load_quant = True # loading quantities from file skips quantity calculation unless loading fails
-compute_quant = False # whether to compute quantities at all 
+save_quant = False # save (and overwrite file) if quantity computation or postprocessing happened
+load_quant = False # loading quantities from file skips quantity calculation unless loading fails
+compute_quant = True # whether to compute quantities at all
 postprocess_quant = False # remove numerical artefacts from quantities
 obtain_fluxlb = True # whether to load or compute if not in file lambda -> q(V_lb) for smallest mu
 
@@ -93,18 +93,18 @@ load_params = True # when loading spectrum or quantities the params dict values 
 
 # PLOTTING PARAMETERS
 
-plot_paper_quantities = True            # the visualization used for Figure 7 of Augustin et al 2017
+plot_paper_quantities = False            # the visualization used for Figure 7 of Augustin et al 2017
 
 plot_full_spectrum_sigma = False        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
                                         # note that this is also contained in plot_paper_quantities
                                         
 plot_full_spectrum_eigvals = False      # the spectrum (mu, sigma) visualized with eigenvalue index running over subplots
 
-plot_quantities = ['eigvals', 'real', 'composed'] # which quantitie types to plot 
+plot_quantities = [] # ['eigvals', 'real', 'composed'] # which quantitie types to plot
                                                   # additionally, choose no or any from 
                                                   # ['eigvals', 'real', 'complex', 'composed']
 
-plot_validation = True # plot available quantities that were calculated by 
+plot_validation = False # plot available quantities that were calculated by
                        # another method (here only the stationary quantities, 
                        # i.e., the steady state spike rate and mean membrane 
                        # potential obtained with the code of the cascade models 
@@ -165,7 +165,7 @@ if compute_spec and not spec_loaded:
     # found by dense evaluation of the eigenvalue candidate array eigenval_init_real_grid
     lambda_all = specsolv.compute_eigenvalue_rect(mu, sigma, N_eigvals, 
                                                   eigenval_init_real_grid, N_procs=N_procs)
-    
+
     quantities_dict['lambda_all'] = lambda_all
     quantities_dict['mu'] = mu
     quantities_dict['sigma'] = sigma
@@ -282,20 +282,41 @@ if load_quant:
 
 quant_computed = False
 if compute_quant and not quant_loaded:  
-    
+
+    # for debugging
+    # only compute the quantities for a few mu, sigma pairs
+    quantities_dict['mu'] = quantities_dict['mu'][:110]
+    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]]) #, quantities_dict['sigma'][-1]])
+    # quantities_dict['C_mu_11'] = np.zeros((2,2))
+
     assert 'lambda_1' and 'lambda_2' in quantities_dict # we need to find lambda_1 and lambda_2 before this
     
     # do the actual quantity computation of the mu sigma rectangle via the following method call
+
+    # this method adds the computed quantities to the
+    # (specified in quant_names=[...] to quantities_dict
     specsolv.compute_quantities_rect(quantities_dict, 
-                            quant_names=['r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
-                                         'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
-                                         'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
-                                         'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2'
-                                        ], N_procs=N_procs)
+                            # quant_names=['r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
+                            #              'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
+                            #              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
+                            #              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2', 'C_mu_11']
+                                            quant_names=['C_mu_11', 'C_mu_12', 'C_mu_21','C_mu_22'],
+                                            N_procs=N_procs)
+
+
+
+    # plot some quantities
+    # without verifying them with pre-existing code
+    print(quantities_dict.keys())
+    plt.plot(quantities_dict['mu'], quantities_dict['C_mu_11'])
+    plt.plot(quantities_dict['mu'], quantities_dict['C_mu_12'])
+    plt.plot(quantities_dict['mu'], quantities_dict['C_mu_21'])
+    plt.plot(quantities_dict['mu'], quantities_dict['C_mu_22'])
+    plt.show()
 
     # SAVING
     # spectrum: saving into hdf5 file: mu, sigma, lambda_all and params
-    # quantities: saving into hdf5 file: lambda_1, lambda_2, r_inf, V_mean_inf 
+    # quantities: saving into hdf5 file: lambda_1, lambda_2, r_inf, V_mean_inf
     # and those coefficients required for the spectral_mattia_diff model
     if save_quant:
 
