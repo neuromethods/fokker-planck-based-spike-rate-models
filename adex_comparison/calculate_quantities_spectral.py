@@ -281,15 +281,17 @@ if load_quant:
     quant_loaded = True
 
 quant_computed = False
-if compute_quant and not quant_loaded:  
+if compute_quant and not quant_loaded:
 
     # for debugging
     # only compute the quantities for a few mu, sigma pairs
     quantities_dict['mu'] = quantities_dict['mu'][:110]
-    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]]) #, quantities_dict['sigma'][-1]])
+    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]]) # quantities_dict['sigma'][-1]])
     # quantities_dict['C_mu_11'] = np.zeros((2,2))
 
+    # assure that lambda_1 & lambda_2 are in the quantities_dict
     assert 'lambda_1' and 'lambda_2' in quantities_dict # we need to find lambda_1 and lambda_2 before this
+
     
     # do the actual quantity computation of the mu sigma rectangle via the following method call
 
@@ -300,18 +302,17 @@ if compute_quant and not quant_loaded:
                             #              'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
                             #              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
                             #              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2', 'C_mu_11']
-                                            quant_names=['C_mu_11', 'C_mu_12', 'C_mu_21','C_mu_22'],
+                            #                 quant_names=['f', 'psi_r', 'c_mu', 'c_sigma'],
+                                        quant_names = ['C_mu'],
                                             N_procs=N_procs)
 
 
-
-    # plot some quantities
-    # without verifying them with pre-existing code
-    print(quantities_dict.keys())
-    plt.plot(quantities_dict['mu'], quantities_dict['C_mu_11'])
-    plt.plot(quantities_dict['mu'], quantities_dict['C_mu_12'])
-    plt.plot(quantities_dict['mu'], quantities_dict['C_mu_21'])
-    plt.plot(quantities_dict['mu'], quantities_dict['C_mu_22'])
+    for i in range(quantities_dict['f'].shape[2]):
+        print(i)
+        # plt.plot(quantities_dict['f'][:, 0, i])
+        # plt.plot(quantities_dict['f'][:, 0, i])
+        plt.semilogy(quantities_dict['f'][:, 0, i])
+    # plt.plot(range(10))
     plt.show()
 
     # SAVING

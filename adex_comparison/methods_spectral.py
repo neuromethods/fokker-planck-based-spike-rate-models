@@ -122,9 +122,10 @@ def compute_eigenvalue_curve_given_sigma(arg_tuple):
 
 
 def  compute_quantities_given_sigma(arg_tuple):
-    params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j = arg_tuple
-    
-    
+    # params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j = arg_tuple
+    params, quant_names, lambda_all, number_of_eigenvalues, mu_arr, sigma_arr, j = arg_tuple
+
+    assert number_of_eigenvalues <= lambda_all.shape[0]
     N_mu = mu_arr.shape[0]
     sigma_j = sigma_arr[j]
     dmu = params['dmu_couplingterms']
@@ -135,19 +136,33 @@ def  compute_quantities_given_sigma(arg_tuple):
     comp_single_start = time.time()
 
     # creating quantity_j arrays initialized with zeros
+
+
     for q in quant_names:
+
         
         # real quantities
+        # do not depend on the number of eigenvalues
         if q in ['r_inf', 'dr_inf_dmu', 'dr_inf_dsigma', 
                  'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma']:
             quant_j[q] = np.zeros(N_mu)
-            
-        # complex quants
-        elif q in ['f_1', 'f_2', 'psi_r_1', 'psi_r_2', 
-                   'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
-                   'C_mu_11', 'C_mu_12', 'C_mu_21', 'C_mu_22']:
-            quant_j[q] = np.zeros(N_mu) + 0j # complex dtype
-            
+
+        # n complex quants for n eigenvalues
+        # elif q in ['f_{}'.format(i+1) for i in range(N_eigvals)] \
+        #         or ['c_mu_{}'.format(i+1) for i in range(N_eigvals)] \
+                # or ['C_mu_{}'.format(i+1) for i in range(N_eigvals)]:
+
+        elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
+                   #, 'psi_r_1', 'psi_r_2',
+                   # 'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
+                   # 'C_mu_11', 'C_mu_12', 'C_mu_21', 'C_mu_22']:
+            # quant_j[q] = np.zeros(N_mu) + 0j # complex dtype
+            quant_j[q] = np.zeros((N_mu, number_of_eigenvalues)) +0j # complex type
+
+        elif q in ['C_mu', 'C_sigma']:
+                # 3-dim. array for C_mu & C_sigma
+                quant_j[q] = np.zeros((N_mu, number_of_eigenvalues, number_of_eigenvalues)) +0j
+
         # unknown quants
         else:
             error('unknown/unsupported quantity {}'.format(q))
@@ -252,6 +267,48 @@ def  compute_quantities_given_sigma(arg_tuple):
         q_2 /= inprod2
         
         return V_arr, phi_2, q_2
+
+
+    # general helpers (N)
+
+    # extend for caching later
+    def psiN(mu, sigma, lambda_N):
+        V_arr, psi_N, dpsi = specsolv.eigenfunction(lambda_N, mu, sigma,
+                                                    adjoint=True)
+        return V_arr, psi_N
+
+
+    def phiN(mu, sigma, lambda_N):
+        V_arr, psi_N = psiN(mu, sigma, lambda_N)
+        V_arr, phi_N, q_N = specsolv.eigenfunction(lambda_N, mu, sigma)
+        inprodN = inner_prod(psi_N, phi_N, V_arr)
+        # if params['verboselevel'] > 0:
+            # print('inner product (phi{})={}'.format(N, inprodN))
+        phi_N /= inprodN
+        q_N /= inprodN
+
+        return V_arr, phi_N, q_N
+
+    def fn(mu, sigma, lambda_n):
+        V_arr, phi_n, q_n = phiN(mu, sigma, lambda_n)
+        f_n = q_n[-1]
+        return f_n
+
+
+
+    # method for computing a general psi(n)
+    # depending on the number of the eigenvalue lambda
+    # psi_n will be called several times within each loop
+    # def psi_n(mu, sigma, lambda_n, cache = True):
+    #     # also use the cache?
+    #     global psi_n_cache, V_arr_cache
+    #     if not cache or psi_n_cache is None:
+    #         V_arr_cache, psi_n_cache, dpsi = specsolve.eigenfunction(lambda_n, mu, sigma,
+    #                                                                  adjoint=True)
+    #     return V_arr_cache, psi_n_cache
+
+
+
     
 
     specsolve = SpectralSolver(params.copy())
@@ -270,13 +327,13 @@ def  compute_quantities_given_sigma(arg_tuple):
         
         return lambda_target
 
-
+    # loop over N_mu
     for i in range(N_mu):
         # abbreviations
         mu_i = mu_arr[i]
-        lambda_1_ij = lambda_1[i, j]
-        lambda_2_ij = lambda_2[i, j]
-        
+        # lambda_1_ij = lambda_1[i, j]
+        # lambda_2_ij = lambda_2[i, j]
+
         # TODO: move this to verbose 1 (but at least the initialization of the curve should be indicated)
         print('======================= mu={}, sigma={} == computing quantities'.format(mu_i, sigma_j))
 
@@ -305,11 +362,11 @@ def  compute_quantities_given_sigma(arg_tuple):
         psi_1_cache = None
         global psi_2_cache
         psi_2_cache = None
-        
+
         # calculate quantities 
         for q in quant_names:
             
-            
+            # compute quantities which do not depend on lambda
             if q == 'r_inf':
                 r_inf = rinf_ref(mu_i, sigma_j)
             
@@ -339,198 +396,115 @@ def  compute_quantities_given_sigma(arg_tuple):
                 V_mean_inf_minus_sigma = Vmeaninf_noref(mu_i, sigma_j-dsigma)
                 # central difference quotient
                 dV_mean_inf_dsigma = (V_mean_inf_plus_sigma - V_mean_inf_minus_sigma) / (2*dsigma)
-            
-            # f_k is the flux of the k-th eigenfunction phi_k evaluated at the threshold V_s 
-            # (V_s is the right most point in the V_arr grid cell where we use backwards finite 
+
+
+            # loop over quantities which depend on lambda
+            # in the mu-loop we comp
+
+
+            # f_k is the flux of the k-th eigenfunction phi_k evaluated at the threshold V_s
+            # (V_s is the right most point in the V_arr grid cell where we use backwards finite
             # differences respecting the absorbing boudary condition)
-            # note that in contrast to the manuscript we normalize phi that yields q_Nv != 1 
+            # note that in contrast to the manuscript we normalize phi that yields q_Nv != 1
             # in general and thus f_1, f_2 != 1
-            if q == 'f_1':
-                V_arr, phi_1, q_1 = phi1(mu_i, sigma_j, lambda_1_ij)
-#                f_1 = sigma_j**2 / 2.0 * phi_1[-2] / (V_arr[-1]-V_arr[-2])
-                f_1 = q_1[-1] # threshold flux
-                
-            if q == 'f_2':
-                V_arr, phi_2, q_2 = phi2(mu_i, sigma_j, lambda_2_ij)
-#                f_2 = sigma_j**2 / 2.0 * phi_2[-2] / (V_arr[-1]-V_arr[-2])
-                f_2 = q_2[-1] # threshold flux
-            
-            # psi_r_k is just the eigenfunction psi_k evaluated at the reset
-            if q == 'psi_r_1':
-                V_arr, psi_1 = psi1(mu_i, sigma_j, lambda_1_ij)
-                k_r = np.argmin(np.abs(V_arr-params['V_r']))
-                psi_r_1 = psi_1[k_r]
-            
-            if q == 'psi_r_2':
-                V_arr, psi_2 = psi2(mu_i, sigma_j, lambda_2_ij)
-                k_r = np.argmin(np.abs(V_arr-params['V_r']))
-                psi_r_2 = psi_2[k_r]
-            
-            
-            # new quantities for the a_dot-model
-            # inner product (dmu Psi1, Phi1)
-            if q == 'C_mu_11':
-                ## dmu_Psi
-                # quantities for central difference for as approx. to the partial deriv
-                lambda_1_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_1_ij)
-                V_arr, psi_1_plus_mu = psi1(mu_i+dmu, sigma_j, lambda_1_plus_mu, cache=False)
-                
-                lambda_1_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_1_ij)
-                V_arr, psi_1_minus_mu = psi1(mu_i-dmu, sigma_j, lambda_1_minus_mu, cache=False)
-                
-                # compute finite-difference (partial derivative)
-                dpsi_1_dmu = (psi_1_plus_mu-psi_1_minus_mu)/(2*dmu)
 
-                ## Phi
-                V_arr, phi_1, q_1 = phi1(mu_i, sigma_j, lambda_1_ij)
-                
-                # compute inner product
-                C_mu_11 = inner_prod(dpsi_1_dmu, phi_1, V_arr)
+            # loop over the N lambdas
+            # test with eigenfluxes 'f'
+            if q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
+                for n in xrange(number_of_eigenvalues):
+                    lambda_n_ij = lambda_all[n, i, j]
 
+                    # vector of f's
+                    if q == 'f':
+                        V_arr, phi_n, q_n = phiN(mu_i, sigma_j, lambda_n_ij)
+                        f_n = q_n[-1]
 
+                        # save in quant_j-dict
+                        quant_j[q][i][n] = f_n
 
-            if q == 'C_mu_12':
-                ## dmu_Psi
-                # quantities for central difference for as approx. to the partial deriv
-                lambda_1_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_1_ij)
-                V_arr, psi_1_plus_mu = psi1(mu_i+dmu, sigma_j, lambda_1_plus_mu, cache=False)
+                    # vector of psi_r's
+                    # psi_r_k is just the eigenfunction psi_k evaluated at the reset
+                    if q == 'psi_r':
+                        V_arr, psi_n = psiN(mu_i, sigma_j, lambda_n_ij)
+                        k_r = np.argmin(np.abs(V_arr-params['V_r']))
+                        psi_r_n = psi_n[k_r]
 
-                lambda_1_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_1_ij)
-                V_arr, psi_1_minus_mu = psi1(mu_i-dmu, sigma_j, lambda_1_minus_mu, cache=False)
+                        #save in quant_j-dict
+                        quant_j[q][i][n] = psi_r_n
 
-                # compute finite-difference (partial derivative)
-                dpsi_1_dmu = (psi_1_plus_mu-psi_1_minus_mu)/(2*dmu)
+                    # vector of c_mu
+                    # inner product between (discretized) partial derivative of psi w.r.t mu and
+                    # the stationary distribution of active (i.e. non refractory) neurons
+                    if q == 'c_mu':
+                        # we need to evaluate psi_n(mu+-dmu) and thus lambda_n(mu+-dmu)
+                        lambda_n_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_n_ij)
+                        V_arr, psi_n_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_n_plus_mu)
 
-                ## Phi
-                V_arr, phi_2, q_2 = phi2(mu_i, sigma_j, lambda_2_ij)
+                        lambda_n_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_n_ij)
+                        V_arr, psi_n_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_n_minus_mu)
 
-                # compute inner product
-                C_mu_12 = inner_prod(dpsi_1_dmu, phi_2, V_arr)
+                        # discretization of the partial derivative of psi w.r.t mu
+                        dpsi_n_dmu = (psi_n_plus_mu - psi_n_minus_mu)/(2*dmu)
+                        V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
 
+                        # compute inner product
+                        c_mu_n = inner_prod(dpsi_n_dmu, phi_0_noref, V_arr)
 
-            if q == 'C_mu_21':
-                ## dmu_Psi
-                # quantities for central difference for as approx. to the partial deriv
-                lambda_2_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_2_ij)
-                V_arr, psi_2_plus_mu = psi2(mu_i+dmu, sigma_j, lambda_2_plus_mu, cache=False)
+                        # save in quant_j-dict
+                        quant_j[q][i][n] = c_mu_n
 
-                lambda_2_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_2_ij)
-                V_arr, psi_2_minus_mu = psi2(mu_i-dmu, sigma_j, lambda_2_minus_mu, cache=False)
+                    # vector of c_sigma
+                    if q == 'c_sigma':
 
-                # compute finite-difference (partial derivative)
-                dpsi_2_dmu = (psi_2_plus_mu-psi_2_minus_mu)/(2*dmu)
+                        # we need to evaluate psi_n(sigma+-dsigma) and thus lambda_n(sigma+-dsigma)
+                        lambda_n_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_n_ij)
+                        V_arr, psi_n_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_n_plus_sigma)
 
-                ## Phi
-                V_arr, phi_1, q_1 = phi1(mu_i, sigma_j, lambda_1_ij)
+                        lambda_n_minus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j-dsigma), lambda_n_ij)
+                        V_arr, psi_n_minus_sigma = psiN(mu_i, sigma_j-dsigma, lambda_n_minus_sigma)
 
-                # compute inner product
-                C_mu_21 = inner_prod(dpsi_2_dmu, phi_1, V_arr)
+                        # discretization of the partial derivative of psi w.r.t sigma
+                        dpsi_n_dsigma = (psi_n_plus_sigma - psi_n_minus_sigma)/(2*dsigma)
+                        V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
 
+                        c_sigma_n = inner_prod(dpsi_n_dsigma, phi_0_noref, V_arr)
 
-            if q == 'C_mu_22':
-                ## dmu_Psi
-                # quantities for central difference for as approx. to the partial deriv
-                lambda_2_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_2_ij)
-                V_arr, psi_2_plus_mu = psi2(mu_i+dmu, sigma_j, lambda_2_plus_mu, cache=False)
+                        #save in quant_j-dict
+                        quant_j[q][i][n] = c_sigma_n
 
-                lambda_2_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_2_ij)
-                V_arr, psi_2_minus_mu = psi2(mu_i-dmu, sigma_j, lambda_2_minus_mu, cache=False)
+            if q in ['C_mu', 'C_sigma']:
+                for k in range(number_of_eigenvalues):
+                    for l in range(number_of_eigenvalues):
+                        lambda_k_ij = lambda_all[k, i, j]
+                        lambda_l_ij = lambda_all[l, i, j]
+                        if q == 'C_mu':
+                            lambda_k_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_k_ij)
+                            V_arr, psi_k_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_k_plus_mu)
 
-                # compute finite-difference (partial derivative)
-                dpsi_2_dmu = (psi_2_plus_mu-psi_2_minus_mu)/(2*dmu)
+                            lambda_k_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_k_ij)
+                            V_arr, psi_k_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_k_minus_mu)
 
-                ## Phi
-                V_arr, phi_2, q_2 = phi2(mu_i, sigma_j, lambda_2_ij)
+                            # compute finite-difference (partial derivative)
+                            dpsi_k_dmu = (psi_k_plus_mu-psi_k_minus_mu)/(2*dmu)
 
-                # compute inner product
-                C_mu_22 = inner_prod(dpsi_2_dmu, phi_2, V_arr)
+                            ## Phi
+                            V_arr, phi_l, q_l = phiN(mu_i, sigma_j, lambda_l_ij)
+                            # compute inner product
+                            C_mu_kl = inner_prod(dpsi_k_dmu, phi_l, V_arr)
 
+                            # save in quant_j-dict
+                            quant_j[q][i][k][l] = C_mu_kl
 
-            # inner product between (discretized) partial derivative of psi w.r.t mu and 
-            # the stationary distribution of active (i.e. non refractory) neurons
-            if q == 'c_mu_1':
-                
-                # we need to evaluate psi_1(mu+-dmu) and thus lambda_1(mu+-dmu)
-                lambda_1_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_1_ij)
-                V_arr, psi_1_plus_mu = psi1(mu_i+dmu, sigma_j, lambda_1_plus_mu, cache=False)
-                
-                lambda_1_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_1_ij)
-                V_arr, psi_1_minus_mu = psi1(mu_i-dmu, sigma_j, lambda_1_minus_mu, cache=False)
-                
-                if params['verboselevel'] > 0:
-                    print('c_mu_1: lambda_1_plus_mu={}, lambda_1_minus_mu={}, lambda_1_ij={}'.format(lambda_1_plus_mu, lambda_1_minus_mu, lambda_1_ij))                
-                
-                # discretization of the partial derivative of psi w.r.t mu
-                dpsi_1_dmu = (psi_1_plus_mu - psi_1_minus_mu)/(2*dmu)
-                V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
-
-                if params['verboselevel'] > 0:                
-                    print('c_mu_1: dpsi_1_dmu(absmin,absmax)=({}, {}) phi0(absmin,absmax)=({}, {})'.format(np.abs(dpsi_1_dmu).min(), np.abs(dpsi_1_dmu).max(), phi_0_noref.min(), phi_0_noref.max()))
-                
-                c_mu_1 = inner_prod(dpsi_1_dmu, phi_0_noref, V_arr)
-
-                if params['verboselevel'] > 0:                
-                    print('c_mu_1={}'.format(c_mu_1))
-              
-
-            if q == 'c_mu_2':
-                
-                # we need to evaluate psi_2(mu+-dmu) and thus lambda_2(mu+-dmu)
-                lambda_2_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_2_ij)
-                V_arr, psi_2_plus_mu = psi2(mu_i+dmu, sigma_j, lambda_2_plus_mu, cache=False)
-                
-                lambda_2_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_2_ij)
-                V_arr, psi_2_minus_mu = psi2(mu_i-dmu, sigma_j, lambda_2_minus_mu, cache=False)
-                
-                # discretization of the partial derivative of psi w.r.t mu
-                dpsi_2_dmu = (psi_2_plus_mu - psi_2_minus_mu)/(2*dmu)
-                V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
-                
-                # inner product between 
-                #   (discretized) partial derivative of psi w.r.t mu and 
-                # the stationary distribution of active (i.e. non refractory) neurons
-                c_mu_2 = inner_prod(dpsi_2_dmu, phi_0_noref, V_arr)
-            
-            
-            if q == 'c_sigma_1':
-                
-                # we need to evaluate psi_1(sigma+-dsigma) and thus lambda_1(sigma+-dsigma)
-                lambda_1_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_1_ij)
-                V_arr, psi_1_plus_sigma = psi1(mu_i, sigma_j+dsigma, lambda_1_plus_sigma, cache=False)
-                
-                lambda_1_minus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j-dsigma), lambda_1_ij)
-                V_arr, psi_1_minus_sigma = psi1(mu_i, sigma_j-dsigma, lambda_1_minus_sigma, cache=False)
-                
-                # discretization of the partial derivative of psi w.r.t sigma
-                dpsi_1_dsigma = (psi_1_plus_sigma - psi_1_minus_sigma)/(2*dsigma)
-                V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
-                
-                c_sigma_1 = inner_prod(dpsi_1_dsigma, phi_0_noref, V_arr)
-            
-            
-            if q == 'c_sigma_2':
-                
-                # we need to evaluate psi_1(sigma+-dsigma) and thus lambda_1(sigma+-dsigma)
-                lambda_2_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_2_ij)
-                V_arr, psi_2_plus_sigma = psi2(mu_i, sigma_j+dsigma, lambda_2_plus_sigma, cache=False)
-                
-                lambda_2_minus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j-dsigma), lambda_2_ij)
-                V_arr, psi_2_minus_sigma = psi2(mu_i, sigma_j-dsigma, lambda_2_minus_sigma, cache=False)
-                
-                # discretization of the partial derivative of psi w.r.t sigma
-                dpsi_2_dsigma = (psi_2_plus_sigma - psi_2_minus_sigma)/(2*dsigma)
-                V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
-                
-                c_sigma_2 = inner_prod(dpsi_2_dsigma, phi_0_noref, V_arr)
-        
+                        if q == 'C_sigma':
+                            pass
 
             # remove the if condition only keep the body after all quantities are there
             if q in locals().keys():
                 quant_j[q][i] = locals()[q] # put local vars in dict
 
 
-    comp_single_duration = time.time() - comp_single_start        
-    
+    comp_single_duration = time.time() - comp_single_start
+
     return j, quant_j, comp_single_duration
 
 
@@ -653,20 +627,22 @@ class SpectralSolver(object):
     
         return lambda_all
     
-    
-    
+
     def compute_quantities_rect(self, quantities_dict, 
                 quant_names=['r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
                              'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
                              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
                              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2'
-                            ], 
-                N_procs=multiprocessing.cpu_count()):
+                            ], N_procs=multiprocessing.cpu_count()):
 
         print('START: computing quantity rect: {}'.format(quant_names))
 
+        # lambda_1 & lambda_2 --> lambda_all
         lambda_1 = quantities_dict['lambda_1']        
         lambda_2 = quantities_dict['lambda_2']
+        lambda_all = quantities_dict['lambda_all']
+        number_of_eigenvalues = 2
+
         mu_arr = quantities_dict['mu']
         sigma_arr = quantities_dict['sigma']
         
@@ -681,15 +657,20 @@ class SpectralSolver(object):
             if q in ['r_inf', 'dr_inf_dmu', 'dr_inf_dsigma', 
                      'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma']:
                 quantities_dict[q] = np.zeros((N_mu, N_sigma))
-                
+
+
             # complex quants
-            elif q in ['f_1', 'f_2', 'psi_r_1', 'psi_r_2', 
-                       'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
-                       'C_mu_11', 'C_mu_12', 'C_mu_21', 'C_mu_22']:
-                quantities_dict[q] = np.zeros((N_mu, N_sigma)) + 0j # complex dtype
-        
-        arg_tuple_list = [(self.params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j)
-                            for j in range(N_sigma)]
+            elif q in ['f', 'psi_r']:
+                        # old quantity names
+                       #_1', 'f_2', 'psi_r_1', 'psi_r_2',
+                       # 'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
+                       # 'C_mu_11', 'C_mu_12', 'C_mu_21', 'C_mu_22']:
+                quantities_dict[q] = np.zeros((N_mu, N_sigma, number_of_eigenvalues)) + 0j # complex dtype
+
+        arg_tuple_list = [(self.params, quant_names, lambda_all, number_of_eigenvalues, mu_arr, sigma_arr, j)
+                          for j in range(N_sigma)]
+        # arg_tuple_list = [(self.params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j)
+                            # for j in range(N_sigma)]
         
         comp_total_start = time.time()
         N_procs = 1
@@ -697,7 +678,8 @@ class SpectralSolver(object):
             # single processing version, i.e. loop
             pool = False
             result = (compute_quantities_given_sigma(arg_tuple) for arg_tuple in arg_tuple_list)
-            
+
+
         else:
             # multiproc version
             pool = multiprocessing.Pool(N_procs, maxtasksperchild=5)
@@ -711,7 +693,8 @@ class SpectralSolver(object):
                   format(sig=sigma_arr[j], rt=runtime, comp=finished, tot=N_sigma))
             
             for q in quantities_j_dict.keys():
-                quantities_dict[q][:, j] = quantities_j_dict[q]
+                quantities_dict[q][:, j, :] = quantities_j_dict[q]
+
         
         if pool:
             pool.close()
@@ -1237,7 +1220,7 @@ class SpectralSolver(object):
         if isinstance(lambda_, complex): lambda_2d = [lambda_.real, lambda_.imag]
         elif isinstance(lambda_, (float,int)): lambda_2d = [lambda_, 0.] 
         else: lambda_2d = lambda_
-        
+
         self.params['mu'] = mu
         self.params['sigma'] = sigma
         
