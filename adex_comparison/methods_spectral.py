@@ -147,16 +147,8 @@ def  compute_quantities_given_sigma(arg_tuple):
                  'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma']:
             quant_j[q] = np.zeros(N_mu)
 
-        # n complex quants for n eigenvalues
-        # elif q in ['f_{}'.format(i+1) for i in range(N_eigvals)] \
-        #         or ['c_mu_{}'.format(i+1) for i in range(N_eigvals)] \
-                # or ['C_mu_{}'.format(i+1) for i in range(N_eigvals)]:
-
         elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
-                   #, 'psi_r_1', 'psi_r_2',
-                   # 'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
-                   # 'C_mu_11', 'C_mu_12', 'C_mu_21', 'C_mu_22']:
-            # quant_j[q] = np.zeros(N_mu) + 0j # complex dtype
+            # matrix for each j_sigma curve
             quant_j[q] = np.zeros((N_mu, number_of_eigenvalues)) +0j # complex type
 
         elif q in ['C_mu', 'C_sigma']:
@@ -295,17 +287,6 @@ def  compute_quantities_given_sigma(arg_tuple):
         return f_n
 
 
-
-    # method for computing a general psi(n)
-    # depending on the number of the eigenvalue lambda
-    # psi_n will be called several times within each loop
-    # def psi_n(mu, sigma, lambda_n, cache = True):
-    #     # also use the cache?
-    #     global psi_n_cache, V_arr_cache
-    #     if not cache or psi_n_cache is None:
-    #         V_arr_cache, psi_n_cache, dpsi = specsolve.eigenfunction(lambda_n, mu, sigma,
-    #                                                                  adjoint=True)
-    #     return V_arr_cache, psi_n_cache
 
 
 
@@ -496,7 +477,25 @@ def  compute_quantities_given_sigma(arg_tuple):
                             quant_j[q][i][k][l] = C_mu_kl
 
                         if q == 'C_sigma':
-                            pass
+                            # todo: check this again
+                            lambda_k_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_k_ij)
+                            V_arr, psi_k_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_k_plus_sigma)
+
+                            lambda_k_minus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j-dsigma), lambda_k_ij)
+                            V_arr, psi_k_minus_sigma = psiN(mu_i, sigma_j-dsigma, lambda_k_minus_sigma)
+
+                            # compute finite-difference (partial derivative)
+                            dpsi_k_dsigma = (psi_k_plus_sigma-psi_k_minus_sigma)/(2*dsigma)
+
+                            ## Phi
+                            V_arr, phi_l, q_l = phiN(mu_i, sigma_j, lambda_l_ij)
+                            # compute inner product
+                            C_sigma_kl = inner_prod(dpsi_k_dsigma, phi_l, V_arr)
+
+                            # save in quant_j-dict
+                            quant_j[q][i][k][l] = C_sigma_kl
+
+
 
             # remove the if condition only keep the body after all quantities are there
             if q in locals().keys():
@@ -658,14 +657,17 @@ class SpectralSolver(object):
                      'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma']:
                 quantities_dict[q] = np.zeros((N_mu, N_sigma))
 
+            elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
+                pass
+
 
             # complex quants
-            elif q in ['f', 'psi_r']:
+            elif q in ['C_mu', 'C_sigma']:
                         # old quantity names
                        #_1', 'f_2', 'psi_r_1', 'psi_r_2',
                        # 'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
                        # 'C_mu_11', 'C_mu_12', 'C_mu_21', 'C_mu_22']:
-                quantities_dict[q] = np.zeros((N_mu, N_sigma, number_of_eigenvalues)) + 0j # complex dtype
+                quantities_dict[q] = np.zeros((N_mu, N_sigma, number_of_eigenvalues, number_of_eigenvalues)) + 0j # complex dtype
 
         arg_tuple_list = [(self.params, quant_names, lambda_all, number_of_eigenvalues, mu_arr, sigma_arr, j)
                           for j in range(N_sigma)]

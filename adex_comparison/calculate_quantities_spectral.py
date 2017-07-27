@@ -307,13 +307,6 @@ if compute_quant and not quant_loaded:
                                             N_procs=N_procs)
 
 
-    for i in range(quantities_dict['f'].shape[2]):
-        print(i)
-        # plt.plot(quantities_dict['f'][:, 0, i])
-        # plt.plot(quantities_dict['f'][:, 0, i])
-        plt.semilogy(quantities_dict['f'][:, 0, i])
-    # plt.plot(range(10))
-    plt.show()
 
     # SAVING
     # spectrum: saving into hdf5 file: mu, sigma, lambda_all and params
