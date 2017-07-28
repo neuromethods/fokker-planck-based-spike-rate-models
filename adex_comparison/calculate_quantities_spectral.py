@@ -285,8 +285,8 @@ if compute_quant and not quant_loaded:
 
     # for debugging
     # only compute the quantities for a few mu, sigma pairs
-    quantities_dict['mu'] = quantities_dict['mu'][:110]
-    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]]) # quantities_dict['sigma'][-1]])
+    quantities_dict['mu'] = quantities_dict['mu'][:4]
+    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
     # quantities_dict['C_mu_11'] = np.zeros((2,2))
 
     # assure that lambda_1 & lambda_2 are in the quantities_dict
@@ -303,9 +303,7 @@ if compute_quant and not quant_loaded:
                             #              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
                             #              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2', 'C_mu_11']
                             #                 quant_names=['f', 'psi_r', 'c_mu', 'c_sigma'],
-                                        quant_names = ['C_mu'],
-                                            N_procs=N_procs)
-
+                                        quant_names = ['f'], N_eigvals=2,  N_procs=N_procs)
 
 
     # SAVING
@@ -327,7 +325,7 @@ if postprocess_quant:
                            quant_names=['lambda_1', 'lambda_2',
                                         'f_1', 'f_2', 
                                         'psi_r_1', 'psi_r_2',
-                                        'c_mu_1', 'c_mu_2', 
+                                        'c_mu_1', 'c_mu_2',
                                         'c_sigma_1', 'c_sigma_2'], 
                             minsigma_interp=0.5, maxsigma_interp=5., maxmu_interp=0.52, 
                             tolerance_conjugation=params['tolerance_conjugation'])
