@@ -283,10 +283,14 @@ if load_quant:
 quant_computed = False
 if compute_quant and not quant_loaded:
 
+    mu_param = 10
+
     # for debugging
     # only compute the quantities for a few mu, sigma pairs
-    quantities_dict['mu'] = quantities_dict['mu'][:4]
-    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
+    quantities_dict['mu'] = quantities_dict['mu'][100:100+mu_param]
+    sigma_val = 1.5
+    sigma_idx = np.argmin(np.abs(quantities_dict['sigma']-sigma_val))
+    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][sigma_idx]])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
     # quantities_dict['C_mu_11'] = np.zeros((2,2))
 
     # assure that lambda_1 & lambda_2 are in the quantities_dict
@@ -294,6 +298,7 @@ if compute_quant and not quant_loaded:
 
     
     # do the actual quantity computation of the mu sigma rectangle via the following method call
+
 
     # this method adds the computed quantities to the
     # (specified in quant_names=[...] to quantities_dict
@@ -303,7 +308,47 @@ if compute_quant and not quant_loaded:
                             #              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
                             #              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2', 'C_mu_11']
                             #                 quant_names=['f', 'psi_r', 'c_mu', 'c_sigma'],
-                                        quant_names = ['f'], N_eigvals=2,  N_procs=N_procs)
+                                        quant_names = ['f', 'dr_inf_dmu', 'c_mu'], N_eigvals=2,  N_procs=N_procs)
+
+
+    # check for quantity M:
+
+
+    # lambda_all = quantities_dict['lambda_all']
+    # plt.plot(1/np.abs(np.real(lambda_all[0,:,:46])))
+    # plt.show()
+
+
+    # print(quantities_dict['c_mu'].shape)
+    dr_inf_dmu = quantities_dict['dr_inf_dmu']
+    print(dr_inf_dmu.shape)
+    # print(dr_inf_dmu.shape)
+    f = quantities_dict['f']
+    c_mu = quantities_dict['c_mu']
+    lambda_all = quantities_dict['lambda_all']
+    lambda_1 = quantities_dict['lambda_1']
+    lambda_2 = quantities_dict['lambda_2']
+    # print(lambda_1.shape)
+    # exit()
+
+    # todo check if c_mu == c_mu (master branch)
+
+
+    # final = dr_inf_dmu[:,0] + np.sum(lambda_all[:2, 100:100+mu_param, sigma_idx] * c_mu[:, :, 0], axis=0)#
+    final = dr_inf_dmu[:,0] + lambda_1[100:100+mu_param, sigma_idx] * c_mu[0, :, 0] + lambda_2[100:100 + mu_param, sigma_idx] * c_mu[0, :, 0]
+    # print(final)
+    # print(final.shape)
+    plt.plot(final)
+    plt.show()
+
+
+
+
+
+
+
+
+
 
 
     # SAVING
