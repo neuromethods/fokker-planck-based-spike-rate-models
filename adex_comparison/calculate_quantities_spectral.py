@@ -80,7 +80,7 @@ eigenval_init_real_grid = np.linspace(-5, -1e-4, 5000)
 save_spec = True # save (and overwrite file) if spectrum computation or postprocessing happened
 load_spec = True # loading spectrum from file skips computation unless loading fails
 compute_spec = False # computes if not loaded
-postprocess_spectrum = True # enforce complex conjugation
+postprocess_spectrum = False # enforce complex conjugation
 
 save_quant = False # save (and overwrite file) if quantity computation or postprocessing happened
 load_quant = False # loading quantities from file skips quantity calculation unless loading fails
@@ -283,14 +283,10 @@ if load_quant:
 quant_computed = False
 if compute_quant and not quant_loaded:
 
-    mu_param = 40
-
     # for debugging
     # only compute the quantities for a few mu, sigma pairs
-    quantities_dict['mu'] = quantities_dict['mu'][:150]
-    sigma_val = 2.5
-    sigma_idx = np.argmin(np.abs(quantities_dict['sigma']-sigma_val))
-    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][sigma_idx]])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
+    quantities_dict['mu'] = quantities_dict['mu'][:4]
+    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
     # quantities_dict['C_mu_11'] = np.zeros((2,2))
 
     # assure that lambda_1 & lambda_2 are in the quantities_dict
@@ -298,7 +294,6 @@ if compute_quant and not quant_loaded:
 
     
     # do the actual quantity computation of the mu sigma rectangle via the following method call
-
 
     # this method adds the computed quantities to the
     # (specified in quant_names=[...] to quantities_dict
@@ -308,27 +303,7 @@ if compute_quant and not quant_loaded:
                             #              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
                             #              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2', 'C_mu_11']
                             #                 quant_names=['f', 'psi_r', 'c_mu', 'c_sigma'],
-                                        quant_names = ['c_mu'], N_eigvals = 2,  N_procs = N_procs)
-
-
-
-    # check for quantity M:
-    c_mu = quantities_dict['c_mu']
-    print(c_mu.shape)
-    plt.plot(c_mu[0,:, 0])
-    plt.plot(c_mu[1,:, 0])
-    plt.show()
-
-    # todo check if c_mu == c_mu (master branch)
-
-
-
-
-
-
-
-
-
+                                        quant_names = ['f'], N_eigvals=2,  N_procs=N_procs)
 
 
     # SAVING
