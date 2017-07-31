@@ -285,8 +285,8 @@ if compute_quant and not quant_loaded:
 
     # for debugging
     # only compute the quantities for a few mu, sigma pairs
-    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
-    # quantities_dict['C_mu_11'] = np.zeros((2,2))
+    # quantities_dict['mu'] = quantities_dict['mu'][:50]
+    quantities_dict['sigma'] = np.array([0.5])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
 
     # assure that lambda_1 & lambda_2 are in the quantities_dict
     assert 'lambda_1' and 'lambda_2' in quantities_dict # we need to find lambda_1 and lambda_2 before this
@@ -296,13 +296,12 @@ if compute_quant and not quant_loaded:
 
     # this method adds the computed quantities to the
     # (specified in quant_names=[...] to quantities_dict
-    specsolv.compute_quantities_rect(quantities_dict, 
-                            # quant_names=['r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
-                            #              'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
-                            #              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
-                            #              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2', 'C_mu_11']
-                            #                 quant_names=['f', 'psi_r', 'c_mu', 'c_sigma'],
+    specsolv.compute_quantities_rect(quantities_dict,
                                         quant_names = ['psi_r'], N_eigvals=2,  N_procs=N_procs)
+
+    plt.plot(quantities_dict['psi_r'][0,:,0])
+    plt.plot(quantities_dict['psi_r'][1,:,0])
+    plt.show()
 
 
 

@@ -146,7 +146,7 @@ def  compute_quantities_given_sigma(arg_tuple):
 
         elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
             # matrix for each j_sigma curve
-            quant_j[q] = np.zeros((N_eigvals, N_mu)) +0j # complex type
+            quant_j[q] = np.zeros((N_eigvals, N_mu)) + 0j # complex type
 
         elif q in ['C_mu', 'C_sigma']:
                 # 3-dim. array for C_mu & C_sigma
@@ -275,7 +275,6 @@ def  compute_quantities_given_sigma(arg_tuple):
             # print('inner product (phi{})={}'.format(N, inprodN))
         phi_N /= inprodN
         q_N /= inprodN
-
         return V_arr, phi_N, q_N
 
     def fn(mu, sigma, lambda_n):
@@ -659,12 +658,10 @@ class SpectralSolver(object):
 
             # complex quants
             elif q in ['C_mu', 'C_sigma']:
-                quantities_dict[q] = np.zeros((N_mu, N_sigma, N_eigvals, N_eigvals)) + 0j # complex dtype
+                quantities_dict[q] = np.zeros((N_eigvals, N_eigvals, N_mu, N_sigma)) + 0j # complex dtype
 
         arg_tuple_list = [(self.params, quant_names, lambda_all, lambda_1, lambda_2, N_eigvals, mu_arr, sigma_arr, j)
                           for j in range(N_sigma)]
-        # arg_tuple_list = [(self.params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j)
-                            # for j in range(N_sigma)]
         
         comp_total_start = time.time()
         N_procs = 1
@@ -687,7 +684,7 @@ class SpectralSolver(object):
                   format(sig=sigma_arr[j], rt=runtime, comp=finished, tot=N_sigma))
             for q in quantities_j_dict.keys():
                 if q in ['C_mu', 'C_sigma']:
-                    quantities_dict[q][:, j, :, :] = quantities_j_dict[q]
+                    quantities_dict[q][:, :, :, j] = quantities_j_dict[q]
                 elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                     quantities_dict[q][:, :, j] = quantities_j_dict[q]
                 elif q in ['r_inf']: # add the other as well
