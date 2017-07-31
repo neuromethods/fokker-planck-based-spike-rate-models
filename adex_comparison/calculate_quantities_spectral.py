@@ -285,8 +285,8 @@ if compute_quant and not quant_loaded:
 
     # for debugging
     # only compute the quantities for a few mu, sigma pairs
-    quantities_dict['mu'] = quantities_dict['mu'][:4]
-    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][0]])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
+    quantities_dict['mu'] = quantities_dict['mu']
+    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][20]])#, quantities_dict['sigma'][1]]) # quantities_dict['sigma'][-1]])
     # quantities_dict['C_mu_11'] = np.zeros((2,2))
 
     # assure that lambda_1 & lambda_2 are in the quantities_dict
@@ -303,8 +303,17 @@ if compute_quant and not quant_loaded:
                             #              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
                             #              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2', 'C_mu_11']
                             #                 quant_names=['f', 'psi_r', 'c_mu', 'c_sigma'],
-                                        quant_names = ['f'], N_eigvals=2,  N_procs=N_procs)
+                                        quant_names = ['psi_r'], N_eigvals=2,  N_procs=N_procs)
 
+
+    print(quantities_dict['psi_r'].shape)
+    # exit()
+    plt.plot(quantities_dict['psi_r'][0,:, 0])
+    plt.plot(quantities_dict['psi_r'][1,:, 0])
+    plt.show()
+    print(quantities_dict['mu'])
+    print(quantities_dict['sigma'])
+    exit()
 
     # SAVING
     # spectrum: saving into hdf5 file: mu, sigma, lambda_all and params

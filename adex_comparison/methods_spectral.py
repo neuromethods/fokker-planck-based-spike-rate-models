@@ -146,7 +146,7 @@ def  compute_quantities_given_sigma(arg_tuple):
 
         elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
             # matrix for each j_sigma curve
-            quant_j[q] = np.zeros((N_mu, N_eigvals)) +0j # complex type
+            quant_j[q] = np.zeros((N_eigvals, N_mu)) +0j # complex type
 
         elif q in ['C_mu', 'C_sigma']:
                 # 3-dim. array for C_mu & C_sigma
@@ -394,7 +394,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                         f_n = q_n[-1]
 
                         # save in quant_j-dict
-                        quant_j[q][i][n] = f_n
+                        quant_j[q][n][i] = f_n
 
                     # vector of psi_r's
                     # psi_r_k is just the eigenfunction psi_k evaluated at the reset
@@ -402,9 +402,9 @@ def  compute_quantities_given_sigma(arg_tuple):
                         V_arr, psi_n = psiN(mu_i, sigma_j, lambda_n_ij)
                         k_r = np.argmin(np.abs(V_arr-params['V_r']))
                         psi_r_n = psi_n[k_r]
-
+                        print('psii: {}'.format(psi_r_n))
                         #save in quant_j-dict
-                        quant_j[q][i][n] = psi_r_n
+                        quant_j[q][n][i] = psi_r_n
 
                     # vector of c_mu
                     # inner product between (discretized) partial derivative of psi w.r.t mu and
@@ -425,7 +425,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                         c_mu_n = inner_prod(dpsi_n_dmu, phi_0_noref, V_arr)
 
                         # save in quant_j-dict
-                        quant_j[q][i][n] = c_mu_n
+                        quant_j[q][n][i] = c_mu_n
 
                     # vector of c_sigma
                     if q == 'c_sigma':
@@ -444,7 +444,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                         c_sigma_n = inner_prod(dpsi_n_dsigma, phi_0_noref, V_arr)
 
                         #save in quant_j-dict
-                        quant_j[q][i][n] = c_sigma_n
+                        quant_j[q][n][i] = c_sigma_n
 
             if q in ['C_mu', 'C_sigma']:
                 for k in range(N_eigvals):
@@ -491,14 +491,10 @@ def  compute_quantities_given_sigma(arg_tuple):
 
 
             # remove the if condition only keep the body after all quantities are there
-            if q in locals().keys():
-                quant_j[q][i] = locals()[q] # put local vars in dict
-
+            # if q in locals().keys():
+            #     quant_j[q][i] = locals()[q] # put local vars in dict
 
     comp_single_duration = time.time() - comp_single_start
-
-    print(quant_j.keys())
-    print(quant_j)
 
     return j, quant_j, comp_single_duration
 
@@ -655,7 +651,7 @@ class SpectralSolver(object):
                 quantities_dict[q] = np.zeros((N_mu, N_sigma))
 
             elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
-                quantities_dict[q] = np.zeros((N_mu, N_sigma, N_eigvals)) +0j # complex type
+                quantities_dict[q] = np.zeros((N_eigvals, N_mu, N_sigma)) +0j # complex type
 
 
             # complex quants
@@ -690,9 +686,7 @@ class SpectralSolver(object):
                 if q in ['C_mu', 'C_sigma']:
                     quantities_dict[q][:, j, :, :] = quantities_j_dict[q]
                 elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
-                    print(quantities_dict[q].shape)
-                    print('-------------------')
-                    print(quantities_j_dict[q].shape)
+                    quantities_dict[q][:, :, j] = quantities_j_dict[q]
 
 
         
