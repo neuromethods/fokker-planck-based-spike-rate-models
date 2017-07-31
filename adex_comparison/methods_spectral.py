@@ -287,7 +287,6 @@ def  compute_quantities_given_sigma(arg_tuple):
 
 
 
-    
 
     specsolve = SpectralSolver(params.copy())
                              
@@ -347,33 +346,34 @@ def  compute_quantities_given_sigma(arg_tuple):
             # compute quantities which do not depend on lambda
             if q == 'r_inf':
                 r_inf = rinf_ref(mu_i, sigma_j)
+                quant_j[q][i] = r_inf
             
             if q == 'dr_inf_dmu':
                 r_inf_plus_mu = rinf_ref(mu_i+dmu, sigma_j)
                 r_inf_minus_mu = rinf_ref(mu_i-dmu, sigma_j)
                 # central difference quotient
-                dr_inf_dmu = (r_inf_plus_mu - r_inf_minus_mu) / (2*dmu)
+                quant_j[q][i]  = (r_inf_plus_mu - r_inf_minus_mu) / (2*dmu)
             
             if q == 'dr_inf_dsigma':
                 r_inf_plus_sigma = rinf_ref(mu_i, sigma_j+dsigma)
                 r_inf_minus_sigma = rinf_ref(mu_i, sigma_j-dsigma)
                 # central difference quotient
-                dr_inf_dsigma = (r_inf_plus_sigma - r_inf_minus_sigma) / (2*dsigma)
+                quant_j[q][i] = (r_inf_plus_sigma - r_inf_minus_sigma) / (2*dsigma)
             
             if q == 'V_mean_inf':
-                V_mean_inf = Vmeaninf_noref(mu_i, sigma_j)
+                quant_j[q][i] = Vmeaninf_noref(mu_i, sigma_j)
             
             if q == 'dV_mean_inf_dmu':
                 V_mean_inf_plus_mu = Vmeaninf_noref(mu_i+dmu, sigma_j)
                 V_mean_inf_minus_mu = Vmeaninf_noref(mu_i-dmu, sigma_j)
                 # central difference quotient
-                dV_mean_inf_dmu = (V_mean_inf_plus_mu - V_mean_inf_minus_mu) / (2*dmu)
+                quant_j[q][i] = (V_mean_inf_plus_mu - V_mean_inf_minus_mu) / (2*dmu)
             
             if q == 'dV_mean_inf_dsigma':
                 V_mean_inf_plus_sigma = Vmeaninf_noref(mu_i, sigma_j+dsigma)
                 V_mean_inf_minus_sigma = Vmeaninf_noref(mu_i, sigma_j-dsigma)
                 # central difference quotient
-                dV_mean_inf_dsigma = (V_mean_inf_plus_sigma - V_mean_inf_minus_sigma) / (2*dsigma)
+                quant_j[q][i] = (V_mean_inf_plus_sigma - V_mean_inf_minus_sigma) / (2*dsigma)
 
 
             # f_k is the flux of the k-th eigenfunction phi_k evaluated at the threshold V_s
@@ -690,6 +690,8 @@ class SpectralSolver(object):
                     quantities_dict[q][:, j, :, :] = quantities_j_dict[q]
                 elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                     quantities_dict[q][:, :, j] = quantities_j_dict[q]
+                elif q in ['r_inf']: # add the other as well
+                    quantities_dict[q][:, j] = quantities_j_dict[q]
 
 
         
