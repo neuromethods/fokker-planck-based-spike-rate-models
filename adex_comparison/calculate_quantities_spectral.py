@@ -303,13 +303,13 @@ if compute_quant and not quant_loaded:
                             #              'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
                             #              'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2', 'C_mu_11']
                             #                 quant_names=['f', 'psi_r', 'c_mu', 'c_sigma'],
-                                        quant_names = ['psi_r'], N_eigvals=2,  N_procs=N_procs)
+                                        quant_names = ['f'], N_eigvals=2,  N_procs=N_procs)
 
 
-    print(quantities_dict['psi_r'].shape)
+    print(quantities_dict['f'].shape)
     # exit()
-    plt.plot(quantities_dict['psi_r'][0,:, 0])
-    plt.plot(quantities_dict['psi_r'][1,:, 0])
+    plt.plot(quantities_dict['f'][0,:, 0])
+    plt.plot(quantities_dict['f'][1,:, 0])
     plt.show()
     print(quantities_dict['mu'])
     print(quantities_dict['sigma'])

@@ -123,7 +123,7 @@ def compute_eigenvalue_curve_given_sigma(arg_tuple):
 
 def  compute_quantities_given_sigma(arg_tuple):
     # params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j = arg_tuple
-    params, quant_names, lambda_all, N_eigvals, mu_arr, sigma_arr, j = arg_tuple
+    params, quant_names, lambda_all, lambda_1, lambda_2, N_eigvals, mu_arr, sigma_arr, j = arg_tuple
 
     assert N_eigvals <= lambda_all.shape[0]
     N_mu = mu_arr.shape[0]
@@ -387,6 +387,10 @@ def  compute_quantities_given_sigma(arg_tuple):
             if q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                 for n in xrange(N_eigvals):
                     lambda_n_ij = lambda_all[n, i, j]
+                    if n == 0:
+                        lambda_n_ij = lambda_1[i, j]
+                    else:
+                        lambda_n_ij = lambda_2[i, j]
 
                     # vector of f's
                     if q == 'f':
@@ -402,7 +406,6 @@ def  compute_quantities_given_sigma(arg_tuple):
                         V_arr, psi_n = psiN(mu_i, sigma_j, lambda_n_ij)
                         k_r = np.argmin(np.abs(V_arr-params['V_r']))
                         psi_r_n = psi_n[k_r]
-                        print('psii: {}'.format(psi_r_n))
                         #save in quant_j-dict
                         quant_j[q][n][i] = psi_r_n
 
@@ -630,8 +633,8 @@ class SpectralSolver(object):
         print('START: computing quantity rect: {}'.format(quant_names))
 
         # lambda_1 & lambda_2 --> lambda_all
-        # lambda_1 = quantities_dict['lambda_1']
-        # lambda_2 = quantities_dict['lambda_2']
+        lambda_1 = quantities_dict['lambda_1']
+        lambda_2 = quantities_dict['lambda_2']
         lambda_all = quantities_dict['lambda_all']
 
 
@@ -658,7 +661,7 @@ class SpectralSolver(object):
             elif q in ['C_mu', 'C_sigma']:
                 quantities_dict[q] = np.zeros((N_mu, N_sigma, N_eigvals, N_eigvals)) + 0j # complex dtype
 
-        arg_tuple_list = [(self.params, quant_names, lambda_all, N_eigvals, mu_arr, sigma_arr, j)
+        arg_tuple_list = [(self.params, quant_names, lambda_all, lambda_1, lambda_2, N_eigvals, mu_arr, sigma_arr, j)
                           for j in range(N_sigma)]
         # arg_tuple_list = [(self.params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j)
                             # for j in range(N_sigma)]
