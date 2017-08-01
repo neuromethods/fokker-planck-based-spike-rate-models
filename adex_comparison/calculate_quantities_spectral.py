@@ -291,11 +291,16 @@ if compute_quant and not quant_loaded:
 
     
     # do the actual quantity computation of the mu sigma rectangle via the following method call
+    # restrict mu, sigma
+    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][20]])
+    quantities_dict['mu'] = quantities_dict['mu'][:10]
+
 
     # this method adds the computed quantities to the
     # (specified in quant_names=[...] to quantities_dict
+    # remove N_procs = 1 again
     specsolv.compute_quantities_rect(quantities_dict,
-                                        quant_names = ['c_sigma'], N_eigvals=2,  N_procs=N_procs)
+                                        quant_names = ['C_mu'], N_eigvals=2,  N_procs=1)
 
 
     # SAVING

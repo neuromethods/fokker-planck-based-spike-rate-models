@@ -150,7 +150,7 @@ def  compute_quantities_given_sigma(arg_tuple):
 
         elif q in ['C_mu', 'C_sigma']:
                 # 3-dim. array for C_mu & C_sigma
-                quant_j[q] = np.zeros((N_mu, N_eigvals, N_eigvals)) +0j # complex type
+                quant_j[q] = np.zeros((N_eigvals, N_eigvals, N_mu)) +0j # complex type
 
         # quantity is not known
         else:
@@ -469,7 +469,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                             C_mu_kl = inner_prod(dpsi_k_dmu, phi_l, V_arr)
 
                             # save in quant_j-dict
-                            quant_j[q][i][k][l] = C_mu_kl
+                            quant_j[q][k][l][i] = C_mu_kl
 
 
                         if q == 'C_sigma':
@@ -489,12 +489,8 @@ def  compute_quantities_given_sigma(arg_tuple):
                             C_sigma_kl = inner_prod(dpsi_k_dsigma, phi_l, V_arr)
 
                             # save in quant_j-dict
-                            quant_j[q][i][k][l] = C_sigma_kl
+                            quant_j[q][k][l][i] = C_sigma_kl
 
-
-            # remove the if condition only keep the body after all quantities are there
-            # if q in locals().keys():
-            #     quant_j[q][i] = locals()[q] # put local vars in dict
 
     comp_single_duration = time.time() - comp_single_start
 
@@ -664,7 +660,6 @@ class SpectralSolver(object):
                           for j in range(N_sigma)]
         
         comp_total_start = time.time()
-        N_procs = 1
         if N_procs <= 1:
             # single processing version, i.e. loop
             pool = False
@@ -687,7 +682,7 @@ class SpectralSolver(object):
                     quantities_dict[q][:, :, :, j] = quantities_j_dict[q]
                 elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                     quantities_dict[q][:, :, j] = quantities_j_dict[q]
-                elif q in ['r_inf']: # add the other as well
+                elif q in ['r_inf']: # add the stationary quantities as well
                     quantities_dict[q][:, j] = quantities_j_dict[q]
 
 
