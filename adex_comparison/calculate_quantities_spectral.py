@@ -82,7 +82,7 @@ load_spec = True # loading spectrum from file skips computation unless loading f
 compute_spec = False # computes if not loaded
 postprocess_spectrum = False # enforce complex conjugation
 
-save_quant = False # save (and overwrite file) if quantity computation or postprocessing happened
+save_quant = True # save (and overwrite file) if quantity computation or postprocessing happened
 load_quant = False # loading quantities from file skips quantity calculation unless loading fails
 compute_quant = True # whether to compute quantities at all
 postprocess_quant = False # remove numerical artefacts from quantities
@@ -241,39 +241,38 @@ if postprocess_spectrum:
                     print('ERROR: there is no second dominant real eigenvalue for mu={}, sigma={}'.format(mu[i], sigma[i]))
                     exit()
 
-    # now we have extracted the first two dominant eigenvalues with 
-    # the property that for complex conjugate pairs (regular modes) 
+    # now we have extracted the first two dominant eigenvalues with
+    # the property that for complex conjugate pairs (regular modes)
     # they are indeed complex conjugates and lambda_1 has positive imag. part
     quantities_dict['lambda_1'] = lambda_1
     quantities_dict['lambda_2'] = lambda_2
-    
+
     if save_spec:
-        specsolv.save_quantities(folder+'/'+filename, quantities_dict)     
+        specsolv.save_quantities(folder+'/'+filename, quantities_dict)
         print('saving spectrum after postprocessing done.')
 
 else:
-    specsolv.load_quantities(folder+'/'+filename, quantities_dict, 
-                             quantities=['lambda_1', 'lambda_2'], load_params=False)      
+    specsolv.load_quantities(folder+'/'+filename, quantities_dict,
+                             quantities=['lambda_1', 'lambda_2'], load_params=False)
 
 
 # II. QUANTITIES CORRESPONDING TO SPECTRUM ABOVE -- COMPUTATION/LOADING
 
-# after having computed or loaded the first two dominant eigenvalues 
-# lambda_1 and lambda_2 we use them to compute the (nonstationary) 
-# quantities (f_1, f_2, c_mu_1, c_mu_2, c_sigma_1, c_sigma_2 
+# after having computed or loaded the first two dominant eigenvalues
+# lambda_1 and lambda_2 we use them to compute the (nonstationary)
+# quantities (f_1, f_2, c_mu_1, c_mu_2, c_sigma_1, c_sigma_2
 # [and psi_r_1, psi_r_2 that are not used in the current models]
-# and furthermore we compute the stationary quantities, too: r_inf, V_mean_inf 
+# and furthermore we compute the stationary quantities, too: r_inf, V_mean_inf
 # and derivatives of tha latter two w.r.t. mu and sigma
 
 # QUANTITY LOADING
 quant_loaded = False
 if load_quant:
-                        
-    quant_names = [ 'lambda_1', 'lambda_2', 
+
+    quant_names = [ 'lambda_1', 'lambda_2',
                     'r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
                     'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
-                    'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
-                    'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2',
+                    'f', 'psi_r', 'c_mu', 'c_sigma', 'C_mu', 'C_sigma',
                     'mu', 'sigma']
 
     specsolv.load_quantities(folder+'/'+filename, quantities_dict, 
@@ -292,15 +291,19 @@ if compute_quant and not quant_loaded:
     
     # do the actual quantity computation of the mu sigma rectangle via the following method call
     # restrict mu, sigma
-    quantities_dict['sigma'] = np.array([quantities_dict['sigma'][20]])
-    quantities_dict['mu'] = quantities_dict['mu'][:10]
+
+    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)
+    quantities_dict['mu'] = np.linspace(-1.5, 5., N_mu)
 
 
     # this method adds the computed quantities to the
     # (specified in quant_names=[...] to quantities_dict
     # remove N_procs = 1 again
     specsolv.compute_quantities_rect(quantities_dict,
-                                        quant_names = ['C_mu'], N_eigvals=2,  N_procs=1)
+                                        # comment out for default
+                                        # computation of all quants
+                                        # quant_names = ['f', 'psi_r'],
+                                        N_eigvals=2,  N_procs=N_procs)
 
 
     # SAVING

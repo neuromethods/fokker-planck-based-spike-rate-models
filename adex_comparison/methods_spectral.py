@@ -706,12 +706,13 @@ class SpectralSolver(object):
     
     def load_quantities(self, filepath, 
                         quantities_dict,
+                        # todo change default loading quantities
                         quantities=['lambda_all', 'mu', 'sigma', 
                                     'lambda_1', 'lambda_2', 
                                     'r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
                                     'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
                                     'f_1', 'f_2', 'psi_r_1', 'psi_r_2',
-                                    'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2'], 
+                                    'c_mu_1', 'c_mu_2', 'c_sigma_1', 'c_sigma_2'],
                         load_params=True):
     
         print('loading quantities {} from file {}'.format(quantities, filepath))
