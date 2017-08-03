@@ -6,22 +6,20 @@ import numpy as np
 from misc.utils import interpolate_xy, lookup_xy
 
 
-def lookup_helper(tensor, q, q_string,  weights):
-    # number N of eigenvalues
-    N = q.shape[0]
+def lookup_helper(tensor, q, q_string, N_eigvals, weights):
 
     if q_string in ['C_mu', 'C_sigma']:
         # do stuff for matrix of matrices
-        for i in range(N):
-            for j in range(N):
+        for i in range(N_eigvals):
+            for j in range(N_eigvals):
                 tensor[i, j] = lookup_xy(q[i, j, :,:], weights)
     elif q_string == 'vander':
         # fill diagonal vandermonde matrix
-        for i in range(N):
+        for i in range(N_eigvals):
             tensor[i, i] = lookup_xy(q[i, :, :], weights)
     else:
         # do stuff for vector of matrices
-        for i in range(N):
+        for i in range(N_eigvals):
             tensor[i] = lookup_xy(q[i, :], weights)
 
 
@@ -38,6 +36,7 @@ def sim_alpha(mu_ext, sigma_ext, dmu_dt, dsigma2_dt,
     C_sigma_mat = np.zeros((N_eigvals, N_eigvals)) + 0j
     c_mu_vec = np.zeros(N_eigvals) + 0j
     c_sigma_vec = np.zeros(N_eigvals) + 0j
+    f_vec = np.zeros(N_eigvals) + 0j
 
     r = np.zeros(steps+1)
 
@@ -50,15 +49,17 @@ def sim_alpha(mu_ext, sigma_ext, dmu_dt, dsigma2_dt,
         weights = interpolate_xy(mu_tot, sigma_tot, mu_range, sigma_range)
         # fill the matrices/vectors
         # build vander
-        lookup_helper(vander_mat, lambda_all, 'vander', weights)
+        lookup_helper(vander_mat, lambda_all, 'vander', N_eigvals, weights)
         # build C_mu
-        lookup_helper(C_mu_mat, C_mu, 'C_mu', weights)
+        lookup_helper(C_mu_mat, C_mu, 'C_mu', N_eigvals, weights)
         # build C_sigma
-        lookup_helper(C_sigma_mat, C_sigma, 'C_sigma', weights)
+        lookup_helper(C_sigma_mat, C_sigma, 'C_sigma', N_eigvals, weights)
         # build c_mu
-        lookup_helper(c_mu_vec, c_mu, None, weights)
+        lookup_helper(c_mu_vec, c_mu, None, N_eigvals, weights)
         # build c_sigma
-        lookup_helper(c_sigma_vec, c_sigma, None, weights)
+        lookup_helper(c_sigma_vec, c_sigma, None, N_eigvals, weights)
+        # build f
+        lookup_helper(f_vec, f, None, N_eigvals, weights)
         # get r_inf
         r_inf_val = lookup_xy(r_inf, weights)
         # construct matrix M
@@ -67,10 +68,12 @@ def sim_alpha(mu_ext, sigma_ext, dmu_dt, dsigma2_dt,
 
         # Euler step: get alpha(i+1)
         alpha = alpha + dt*(M.dot(alpha)+c)
-        r[i+1] = r_inf_val + f.dot(alpha)
+        f_alpha = f_vec.dot(alpha.T)
+        # get new r
+        r[i+1] = r_inf_val + f_alpha
 
         # return results
-        return r
+    return [r*1000]
 
 
 
@@ -100,18 +103,19 @@ def run_alpha(ext_signal, params, filename):
 
     # extract quantities
     h5file = tables.open_file(filename, mode = 'r')
-    mu_range = h5file.root.mu
-    sigma_range = h5file.root.sigma
-    lambda_all = h5file.root.lambda_all
-    r_inf = h5file.root.r_inf
-    f = h5file.root.f
-    c_mu = h5file.root.c_mu
-    c_sigma = h5file.root.c_sigma
-    C_mu = h5file.root.C_mu
-    C_sigma = h5file.root.C_sigma
+    mu_range = np.array(h5file.root.mu)
+    sigma_range = np.array(h5file.root.sigma)
+    lambda_all = np.array(h5file.root.lambda_all)
+    r_inf = np.array(h5file.root.r_inf)
+    f = np.array(h5file.root.f)
+    c_mu = np.array(h5file.root.c_mu)
+    c_sigma = np.array(h5file.root.c_sigma)
+    C_mu = np.array(h5file.root.C_mu)
+    C_sigma = np.array(h5file.root.C_sigma)
+    h5file.close()
     # extract params from dictionary
     runtime = params['runtime']
-    dt = params['dt']
+    dt = params['uni_dt']
     steps = int(runtime/dt)
     t = np.linspace(0., runtime, steps+1)
     a = params['a']
@@ -126,11 +130,14 @@ def run_alpha(ext_signal, params, filename):
     dsigma2_dt = np.diff(sigma_ext**2)/dt
 
 
-    results = sim_alpha(mu_ext, sigma_ext, dmu_dt, dsigma2_dt, mu_range,
+    sim_results = sim_alpha(mu_ext, sigma_ext, dmu_dt, dsigma2_dt, mu_range,
                         sigma_range, lambda_all, r_inf, f, c_mu, c_sigma,
                         C_mu, C_sigma, N_eigvals, a, b, Ew, tauw, t, steps, dt)
 
-    return results
+
+
+
+    return {'r':sim_results[0], 't':t}
 
 
 
