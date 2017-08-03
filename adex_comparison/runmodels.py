@@ -16,6 +16,7 @@ import models.ln_bexdos.ln_bexdos_model as lnbexdos
 import models.spec1.spec1_model as s1
 import models.spec2.spec2_model as s2
 import models.spec2_red.spec2_red_model as s2_red
+import models.alpha.alpha_model as alpha
 
 # use the following in IPython for qt plots: %matplotlib qt
 
@@ -23,20 +24,21 @@ import models.spec2_red.spec2_red_model as s2_red
 # what will be computed
 
 # network simulation
-run_network =  True
+run_network =  False
 # full fokker planck model
-run_fp =       True
+run_fp =       False
 
 # reduced models
 # ln cascade
 run_ln_exp =   True
-run_ln_dos=   True
+run_ln_dos=   False
 run_ln_bexdos = False 
 
 # spectral
-run_spec1    =    True
-run_spec2   =    True
-run_spec2_red = True
+run_spec1    =    False
+run_spec2   =    False
+run_spec2_red = False
+run_alpha = True
 
 
 # use as default the parameters from file params.py
@@ -45,11 +47,11 @@ params = params.get_params()
 
 # runtime options
 # run simulation of uncoupled (rec=False) or recurrently coupled simulation (rec=True)
-rec = True
+rec = False
 
 params['runtime'] = 3000.
 # number of neurons
-params['N_total'] = 4000 #50000
+params['N_total'] = 5000 #50000
 # time steps for models
 params['uni_dt'] = 0.01 # [ms]
 params['fp_dt'] = 0.05
@@ -61,15 +63,15 @@ params['net_dt'] = 0.05
 
 # coupling (and delay) params in the case of recurrency, i.e. rec = True
 params['K'] =  100
-params['J'] = 0.05
+params['J'] = 0.00
 params['delay_type'] = 2
 params['taud'] = 3.
 params['const_delay'] = 5.
 
 
 # adaptation params as scalars
-params['a'] = 4.
-params['b'] = 40.
+params['a'] = 0.
+params['b'] = 0.
 
 
 # [only for reduced models] switch between two different time integration schemes: (1) Euler, (2) Heun
@@ -89,24 +91,24 @@ params['t_ref'] = 0.0
 plot_rates = True
 plot_input = True
 
-plot_adapt = True and (params['a'] > 0 or params['b'] > 0)
+plot_adapt = False and (params['a'] > 0 or params['b'] > 0)
 
 # external input mean
 # for the external input mean and the standard deviation any type of input may be defined, such as constant, step, ramp
 
-input_mean = 'steps' # similar to Fig1 of manuscript
+# input_mean = 'steps' # similar to Fig1 of manuscript
 # input_mean = 'osc'
-# input_mean = 'const'
+input_mean = 'const'
 # input_mean = 'OU'
 # input_mean = 'ramp'
 
 # filter input mean (necessary for spectral_2m model)
 filter_mean = True
 
-#input_std = 'const'
+input_std = 'const'
 #input_std = 'step'
 #input_std = 'OU'
-input_std = 'ramp'
+# input_std = 'ramp'
 filter_std = True
 
 # external time trace used for generating input and plotting
@@ -123,13 +125,13 @@ params['t_ext'] = t_ext
 
 # mu_ext variants
 if input_mean == 'const':
-    mu_ext = np.ones(steps+1) * 4.0
+    mu_ext = np.ones(steps+1) * 0.46
 
 # mu = OU process, sigma = const
 elif input_mean == 'OU':
     params['ou_X0'] = 0.
-    params['ou_mean']  = 6.0
-    params['ou_sigma'] = .5
+    params['ou_mean']  = .2
+    params['ou_sigma'] = .005
     params['ou_tau']   = 50.
     mu_ext = generate_OUinput(params)
 
@@ -143,11 +145,11 @@ elif input_mean == 'osc':
 # input is ramped over a certain time interval from mu_start to mu_end
 elif input_mean == 'ramp':
     # define parameters for input
-    ramp_start = 500.
+    ramp_start = 150.
     assert ramp_start < params['runtime']
     ramp_duration = 30.
-    mu_start = 2.
-    mu_end = 4.
+    mu_start = .1
+    mu_end = 0.7
     mu_ext = get_changing_input(params['runtime'],
                                 ramp_start,params['min_dt'],mu_start,
                                 mu_end,duration_change=ramp_duration)
@@ -179,7 +181,7 @@ elif input_mean == 'steps':
 
 # sigma_ext variants
 if input_std == 'const':
-    sigma_ext = np.ones(steps+1) * 2.
+    sigma_ext = np.ones(steps+1) * .6
 
 
 elif input_std == 'step':
@@ -302,6 +304,12 @@ if run_spec2_red:
     results['model_results']['spec2_red'] = \
         s2_red.run_spec2_red(ext_input, params, rec_vars=params['rec_sm'],
                                      rec=rec, filename_h5 = spec_data)
+
+
+if run_alpha:
+    ext_input = interpolate_input(ext_input0, params, 'reduced')
+    results['model_results']['alpha'] = \
+        alpha.run_alpha(ext_input, params, spec_data)
 
 
 

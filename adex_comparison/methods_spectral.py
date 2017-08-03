@@ -283,10 +283,6 @@ def  compute_quantities_given_sigma(arg_tuple):
         return f_n
 
 
-
-
-
-
     specsolve = SpectralSolver(params.copy())
                              
     # method for obtaining an eigenvalue at mu, sigma specified mu_sigma_target
@@ -385,12 +381,8 @@ def  compute_quantities_given_sigma(arg_tuple):
             # test with eigenfluxes 'f'
             if q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                 for n in xrange(N_eigvals):
+                    # get the eigenvalue n for the respective mu, sigma
                     lambda_n_ij = lambda_all[n, i, j]
-                    if n == 0:
-                        lambda_n_ij = lambda_1[i, j]
-                    else:
-                        lambda_n_ij = lambda_2[i, j]
-
                     # vector of f's
                     if q == 'f':
                         V_arr, phi_n, q_n = phiN(mu_i, sigma_j, lambda_n_ij)

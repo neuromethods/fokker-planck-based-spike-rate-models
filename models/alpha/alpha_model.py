@@ -39,6 +39,8 @@ def sim_alpha(mu_ext, sigma_ext, dmu_dt, dsigma2_dt,
     f_vec = np.zeros(N_eigvals) + 0j
 
     r = np.zeros(steps+1)
+    r_without_f_alpha = np.zeros(steps+1)
+    f_alpha_vec = np.zeros(steps+1)
 
     for i in range(steps):
 
@@ -73,18 +75,7 @@ def sim_alpha(mu_ext, sigma_ext, dmu_dt, dsigma2_dt,
         r[i+1] = r_inf_val + f_alpha
 
         # return results
-    return [r*1000]
-
-
-
-
-
-
-
-
-
-
-
+    return [r*1000, r_without_f_alpha*1000, f_alpha_vec]
 
 
 
@@ -137,7 +128,7 @@ def run_alpha(ext_signal, params, filename):
 
 
 
-    return {'r':sim_results[0], 't':t}
+    return {'r':sim_results[0], 't':t,'r_without':sim_results[1], 'f_alpha':sim_results[2]}
 
 
 
