@@ -30,7 +30,7 @@ def get_params():
     #initial conditions
     #the transient response of the network and the solution of the fp eq are in very good agreement for the init: normal
     #note for uniform distribution: by default the uniform initial distribution is set on the interval [Vr, Vcut]
-    params['net_v_init'] = 'normal' # 'uniform' #'normal', 'delta'
+    params['net_v_init'] = 'delta' # 'uniform' #'normal', 'delta'
     params['net_delta_peak'] = -70.
     params['net_normal_mean'] = -100.   #mV
     params['net_normal_sigma'] = 10.    #mV
@@ -72,7 +72,7 @@ def get_params():
 
     #initial conditions for the fp model. by default they match initial conditions for the net
     params['fp_v_init'] = params['net_v_init'] #'delta'#'uniform','normal', 'delta'
-    params['fp_delta_peak'] =   params['net_delta_peak'] #[mV]
+    params['fp_delta_peak'] =   params['Vr'] #[mV]
     params['fp_normal_mean'] =  params['net_normal_mean']
     params['fp_normal_sigma'] = params['net_normal_sigma']
     # rather use these for the delay
