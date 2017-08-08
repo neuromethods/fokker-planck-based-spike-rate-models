@@ -292,8 +292,8 @@ if compute_quant and not quant_loaded:
     # do the actual quantity computation of the mu sigma rectangle via the following method call
     # restrict mu, sigma
 
-    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)[0:4]
-    quantities_dict['mu'] = np.linspace(-1.5, 5., N_mu)[100:140]
+    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)[20:24]
+    quantities_dict['mu'] = np.linspace(-1.5, 5., N_mu)
 
 
     # this method adds the computed quantities to the
@@ -302,7 +302,9 @@ if compute_quant and not quant_loaded:
     specsolv.compute_quantities_rect(quantities_dict,
                                         # comment out for default
                                         # computation of all quants
-                                        # quant_names = ['f', 'psi_r'],
+                                        quant_names = ['f', 'psi_r',
+                                                       # 'c_mu', 'c_sigma',
+                                                       'r_inf'],
                                         N_eigvals=2,  N_procs=N_procs)
 
 

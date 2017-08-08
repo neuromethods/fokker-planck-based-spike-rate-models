@@ -26,11 +26,11 @@ import models.alpha.alpha_model as alpha
 # network simulation
 run_network =  False
 # full fokker planck model
-run_fp =       False
+run_fp =       True
 
 # reduced models
 # ln cascade
-run_ln_exp =   True
+run_ln_exp =   False
 run_ln_dos=   False
 run_ln_bexdos = False 
 
@@ -38,7 +38,7 @@ run_ln_bexdos = False
 run_spec1    =    False
 run_spec2   =    False
 run_spec2_red = False
-run_alpha = True
+run_alpha = False
 
 
 # use as default the parameters from file params.py
@@ -125,7 +125,7 @@ params['t_ext'] = t_ext
 
 # mu_ext variants
 if input_mean == 'const':
-    mu_ext = np.ones(steps+1) * 0.46
+    mu_ext = np.ones(steps+1) * 0.9
 
 # mu = OU process, sigma = const
 elif input_mean == 'OU':
@@ -181,7 +181,7 @@ elif input_mean == 'steps':
 
 # sigma_ext variants
 if input_std == 'const':
-    sigma_ext = np.ones(steps+1) * .6
+    sigma_ext = np.ones(steps+1) * 4.
 
 
 elif input_std == 'step':
