@@ -379,6 +379,9 @@ def  compute_quantities_given_sigma(arg_tuple):
 
             # loop over the N lambdas
             # test with eigenfluxes 'f'
+
+            # time.sleep(5)
+            # print('mu {}, sigma {}'.format(mu_i, sigma_j))
             if q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                 for n in xrange(N_eigvals):
                     # get the eigenvalue n for the respective mu, sigma
@@ -387,7 +390,9 @@ def  compute_quantities_given_sigma(arg_tuple):
                     if q == 'f':
                         V_arr, phi_n, q_n = phiN(mu_i, sigma_j, lambda_n_ij)
                         f_n = q_n[-1]
-
+                        # print('mu {}, sigma {}'.format(mu_i, sigma_j))
+                        print('f_{}: {}'.format(n+1, f_n))
+                        # time.sleep(10)
                         # save in quant_j-dict
                         quant_j[q][n][i] = f_n
 

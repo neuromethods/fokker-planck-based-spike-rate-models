@@ -7,7 +7,7 @@ import numpy as np
 
 
 filename_devel = 'quantities_spectral.h5'
-filename_master = 'quantities_spectral_master.h5'
+filename_master = 'quantities_spectral_should_be_equal.h5'
 
 
 # define mu, sigma
@@ -40,7 +40,7 @@ h5file.close()
 
 
 
-plt.plot(d1['mu'], d1['f_1'][:, 20], label = 'master')
+plt.plot(d1['mu'], d1['f_2'][:, 0], label = 'master')
 # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
 plt.plot(d2['mu'], d2['f'][1, :, 0], label = 'devel')
 # plt.plot(devel['mu'], devel['psi_r'][1, :, 1], label = 'devel')
