@@ -134,7 +134,7 @@ def run_ln_dos(ext_signal, params, filename,
     if FS:
         raise NotImplementedError('FS-effects not implemented for LNexp model!')
 
-    # print('running lndosc')
+    print('----- integrating LNdos-model')
 
     # runtime parameters
     runtime = params['runtime']

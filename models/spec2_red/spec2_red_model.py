@@ -104,7 +104,7 @@ def run_spec2_red(ext_signal, params, filename_h5,
     if FS:
         raise NotImplementedError('FS-effects not implemented for LNexp model!')
 
-    # print('running spec2m simple')
+    print('----- intergating (reduced) spec2-model')
 
     # runtime parameters
     dt = params['uni_dt'] # time resolution for spectral mattia model

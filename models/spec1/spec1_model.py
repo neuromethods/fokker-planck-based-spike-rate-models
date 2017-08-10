@@ -115,6 +115,9 @@ def run_spec1(ext_signal, params, filename_h5,
     if FS:
         raise NotImplementedError('FS-effects not implemented for spectral1 model!')
 
+    print('----- integrating spec1-model')
+
+
     # runtime parameters
     dt = params['uni_dt']
     runtime = params['runtime']

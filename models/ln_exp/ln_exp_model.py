@@ -10,7 +10,6 @@ except:
     def njit(func):
         return func
 
-
 # longer description of the model
 @njit
 def sim_ln_exp(mu_ext, sigma_ext, mu_range, sigma_range,
@@ -105,7 +104,7 @@ def run_ln_exp(ext_signal, params,filename,
     if FS:
         raise NotImplementedError('FS-effects not implemented for LNexp model!')
 
-    # print('running lnexp')
+    print('----- integrating LNexp-model')
 
     # runtime parameters
     runtime = params['runtime']

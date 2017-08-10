@@ -296,7 +296,7 @@ def run_spec2(ext_signal, params, filename_h5,
     if FS:
         raise NotImplementedError('FS-effects not implemented for spectral 2m model!')
 
-    print('running spec2')
+    print('----- integrating spec2-model')
 
     # runtime parameters
     dt = params['uni_dt']
