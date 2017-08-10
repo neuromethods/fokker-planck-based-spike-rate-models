@@ -1,7 +1,7 @@
 # imports
 import numpy as np
 import tables
-from misc.utils import interpolate_xy, lookup_xy, get_mu_syn, get_sigma_syn
+from misc.utils import interpolate_xy, lookup_xy, get_mu_syn, get_sigma_syn, outside_grid_warning
 from matplotlib.pyplot import *
 # try to import numba
 # or define dummy decorator
@@ -17,11 +17,10 @@ except:
 
 @njit
 def sim_ln_dos(mu_ext, sig_ext, dmu_ext_dt, t, dt, steps,
-                       mu_range, sig_range, omega_grid,
-                       tau_grid, tau_mu_f_grid,
-                       tau_sigma_f_grid, Vmean_grid,
-                       r_grid,a,b,C,wm0, EW, tauw, rec, K, J,
-                       delay_type, const_delay,taud,uni_int_order):
+               mu_range, sig_range, omega_grid,tau_grid,
+               tau_mu_f_grid, tau_sigma_f_grid, Vmean_grid,
+               r_grid,a,b,C,wm0, EW, tauw, rec, K, J, delay_type,
+               const_delay,taud,uni_int_order, grid_warn = True):
     
     # small optimization(s)
     b_tauW = b * tauw
@@ -49,6 +48,13 @@ def sim_ln_dos(mu_ext, sig_ext, dmu_ext_dt, t, dt, steps,
 
     for i in xrange(steps):
         for j in range(int(uni_int_order)):
+
+
+
+            # outside grid warning
+            if grid_warn and j == 0:
+                outside_grid_warning(mu_f[i+j]-wm[i+j]/C, sig_f[i+j],
+                                     mu_range, sig_range, dt*i)
 
 
 
@@ -134,7 +140,7 @@ def run_ln_dos(ext_signal, params, filename,
     if FS:
         raise NotImplementedError('FS-effects not implemented for LNexp model!')
 
-    print('----- integrating LNdos-model')
+    print('==================== integrating LNdos-model ====================')
 
     # runtime parameters
     runtime = params['runtime']
@@ -169,6 +175,9 @@ def run_ln_dos(ext_signal, params, filename,
     # time integration method (switch between Euler & Heun method)
     uni_int_order = params['uni_int_order']
 
+    # outside grid warning
+    grid_warn = params['grid_warn']
+
     # membrane capacitance
     C = params['C']
 
@@ -197,11 +206,11 @@ def run_ln_dos(ext_signal, params, filename,
     dmu_ext_dt = np.append(dmu_ext_dt,dmu_ext_dt[-1])
 
     # run simulation and save everything in the results dict
-    res_sim = sim_ln_dos(mu_ext,sigma_ext,dmu_ext_dt,t,dt,
-                                 steps,mu_vals,sigma_vals,omega,
-                                 tau,tau_mu_f,tau_sigma_f,
-                                 V_mean_ss,r_ss,a,b,C,wm0, Ew,tauw,rec,K,J,
-                                 delay_type,ndt,taud, uni_int_order)
+    res_sim = sim_ln_dos(mu_ext,sigma_ext,dmu_ext_dt,t,dt,steps,
+                         mu_vals,sigma_vals,omega,tau,tau_mu_f,
+                         tau_sigma_f,V_mean_ss,r_ss,a,b,C,wm0,
+                         Ew,tauw,rec,K,J,delay_type,ndt,taud,
+                         uni_int_order, grid_warn)
 
     #store results in dictionary which is returned
     results_dict = dict()

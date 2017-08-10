@@ -182,12 +182,14 @@ def look_up_function_1d(Z, weights):
                    Z[int(xid1+1),int(yid1)]*dxid*(1-dyid)   +\
                    Z[int(xid1),int(yid1+1)]*(1-dxid)*dyid   +\
                    Z[int(xid1+1),int(yid1+1)]*dxid*dyid
+
+# use xi/yi -> mu/sigma to have correct warnings
 @njit
 def interpolate_xy(xi, yi, rangex, rangey):
     weights = np.zeros(4)
     dimx = rangex.size
     dimy = rangey.size
-    #DETERMINE WEIGHTS FOR X COORDINATE
+    # determine weights for x-coordinate
     if xi <= rangex[0]:
         idx = 0
         distx = 0
@@ -199,6 +201,7 @@ def interpolate_xy(xi, yi, rangex, rangey):
             if rangex[i] <= xi < rangex[i+1]:
                 idx = i
                 distx = (xi-rangex[i])/(rangex[i+1]-rangex[i])
+    # determine weights for y-coordinate
     if yi <= rangey[0]:
         idy = 0
         disty = 0
@@ -227,6 +230,23 @@ def lookup_xy(table, weights):
            table[int(idx),int(idy+1)]*(1-distx)*disty   +\
            table[int(idx+1),int(idy+1)]*distx*disty
 
+
+
+# function for outside grid warnings.
+# if mu/sigma get smallel/larger than min/max
+# of the precalculated mui-sig rectangle a warning is shown
+@njit
+def outside_grid_warning(xi, yi, rangex, rangey, when):
+    # mu warnings
+    if(xi < rangex[0]):
+        print('--- OUTSIDE-GRID-WARNING: mu too low: ', xi, ' at time: ', when, 's')
+    elif(xi > rangex[-1]):
+        print('--- OUTSIDE-GRID-WARNING: mu too high: ', xi, ' at time: ', when, 's')
+    # sigma warnings
+    if(yi < rangey[0]):
+        print('--- OUTSIDE-GRID-WARNING: sigma too low: ', yi, ' at time: ', when, 's')
+    elif(yi > rangey[-1]):
+        print('--- OUTSIDE-GRID-WARNING: sigma too high: ', yi, ' at time: ', when, 's')
 
 
 

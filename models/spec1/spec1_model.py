@@ -1,7 +1,7 @@
 # imports
 import tables
 import numpy as np
-from misc.utils import interpolate_xy, lookup_xy, get_mu_syn, get_sigma_syn
+from misc.utils import interpolate_xy, lookup_xy, get_mu_syn, get_sigma_syn, outside_grid_warning
 
 # try to import numba
 # or define dummy decorator
@@ -22,7 +22,7 @@ except:
 def sim_spec1(mu_ext, sigma_ext, map1_Vmean, map_r_inf, mu_range,
               sigma_range, map_lambda_1, tauw, dt, steps, C,a ,b, EW,
               s0, r0,w0, rec,K,J,delay_type,n_d,taud, uni_int_order,
-              rectify):
+              rectify, grid_warn = True):
 
     # small optimization(s)
     dt_tauw = dt/tauw
@@ -60,6 +60,10 @@ def sim_spec1(mu_ext, sigma_ext, map1_Vmean, map_r_inf, mu_range,
 
             #effective mu
             mu_eff = mu_syn - wm[i+j] / C
+
+            # grid warning
+            if grid_warn and j == 0:
+                outside_grid_warning(mu_eff, sigma_syn, mu_range, sigma_range, dt*i)
 
             # interpolate
             weights = interpolate_xy(mu_eff, sigma_syn, mu_range, sigma_range)
@@ -115,7 +119,7 @@ def run_spec1(ext_signal, params, filename_h5,
     if FS:
         raise NotImplementedError('FS-effects not implemented for spectral1 model!')
 
-    print('----- integrating spec1-model')
+    print('==================== integrating spec1-model ====================')
 
 
     # runtime parameters
@@ -148,8 +152,9 @@ def run_spec1(ext_signal, params, filename_h5,
     delay_type = params['delay_type']
     # integration order
     uni_int_order = params['uni_int_order']
-    # boolean for rectification
-    rectify = params['rectify_spec_models']
+    # boolean for rectification & grid warning
+    rectify = params['rectify_spec_models']#
+    grid_warn = params['grid_warn']
 
     # membrane capacitance
     C = params['C']
@@ -171,7 +176,8 @@ def run_spec1(ext_signal, params, filename_h5,
     # run simulation loop
     results = sim_spec1(mu_ext, sigma_ext,map_Vmean,map_r,mu_tab,sig_tab,
                         lambda_1,tauw, dt, steps,C, a,b,Ew, s0, r0,w0,
-                        rec, K, J, delay_type, ndt, taud, uni_int_order, rectify)
+                        rec, K, J, delay_type, ndt, taud, uni_int_order,
+                        rectify, grid_warn)
 
     #store results in dictionary which is returned
     results_dict = dict()

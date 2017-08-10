@@ -1,7 +1,7 @@
 # imports
 import numpy as np
 import tables
-from misc.utils import interpolate_xy, lookup_xy, get_mu_syn, get_sigma_syn
+from misc.utils import interpolate_xy, lookup_xy, get_mu_syn, get_sigma_syn, outside_grid_warning
 # try to import numba
 # or define dummy decorator
 try:
@@ -15,7 +15,7 @@ except:
 def sim_ln_exp(mu_ext, sigma_ext, mu_range, sigma_range,
                map_Vmean, map_r, map_tau_mu_f, map_tau_sigma_f,
                L, muf0, sigma_f0, w_m0, a, b, C, dt, tauW, Ew,
-               rec, K, J, delay_type, const_delay, taud, uni_int_order):
+               rec, K, J, delay_type, const_delay, taud, uni_int_order, grid_warn = True):
 
     # small optimization(s)
     b_tauW = b * tauW
@@ -45,6 +45,11 @@ def sim_ln_exp(mu_ext, sigma_ext, mu_range, sigma_range,
             # save for param exploration
             # todo remove this again
             mu_total[i+j] = mu_f_eff
+
+            # grid warning
+            if grid_warn and j == 0:
+                outside_grid_warning(mu_f_eff, sigma_f[i+j], mu_range, sigma_range, dt*i)
+            # interpolate
             weights = interpolate_xy(mu_f_eff, sigma_f[i+j], mu_range, sigma_range)
 
             # lookup
@@ -104,7 +109,7 @@ def run_ln_exp(ext_signal, params,filename,
     if FS:
         raise NotImplementedError('FS-effects not implemented for LNexp model!')
 
-    print('----- integrating LNexp-model')
+    print('==================== integrating LNexp-model ====================')
 
     # runtime parameters
     runtime = params['runtime']
@@ -136,6 +141,8 @@ def run_ln_exp(ext_signal, params,filename,
     delay_type = params['delay_type']
     # time integration method
     uni_int_order = params['uni_int_order']
+    # outside grid warning
+    grid_warn = params['grid_warn']
 
     # membrane capacitance
     C = params['C']
@@ -165,8 +172,9 @@ def run_ln_exp(ext_signal, params,filename,
     # run the model and save results in the results dictionary 
     results = sim_ln_exp(mu_ext, sigma_ext, mu_vals, sigma_vals,
                          V_mean_ss, r_ss, tau_mu_exp,tau_sigma_exp                             ,
-                         steps, mu_f0, sigma_f0,  wm0, a, b, C, dt, tauW,
-                         Ew, rec,K,J, delay_type, ndt, taud, uni_int_order)
+                         steps, mu_f0, sigma_f0,  wm0, a, b, C, dt,
+                         tauW, Ew, rec,K,J, delay_type, ndt, taud,
+                         uni_int_order, grid_warn)
     
     #depending on the variable record_variables certain data arrays get saved in the results_dict
     results_dict = dict()

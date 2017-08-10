@@ -1,7 +1,7 @@
 # imports
 import tables
 import numpy as np
-from misc.utils import interpolate_xy, lookup_xy, get_mu_syn, get_sigma_syn
+from misc.utils import interpolate_xy, lookup_xy, get_mu_syn, get_sigma_syn, outside_grid_warning
 # try to import numba
 # or define dummy decorator
 try:
@@ -17,7 +17,7 @@ except:
 def sim_spec2_red(mu_ext, sigma_ext,steps,dt,EW, a,b,C, tauw,
                       map_Vmean, map_rss, mu_range2, sigma_range2,
                       map_eig1, map_eig_mattia, rec,K,J,delay_type,n_d,
-                      taud, r0, s0, w0, uni_int_order):
+                      taud, r0, s0, w0, uni_int_order, grid_warn = True):
 
     # optimazations
     dt_tauw = dt/tauw
@@ -54,6 +54,10 @@ def sim_spec2_red(mu_ext, sigma_ext,steps,dt,EW, a,b,C, tauw,
 
             # compute effective mu
             mu_tot = mu_syn  - wm[i+j] / C
+
+            # grid warning
+            if grid_warn and j == 0:
+                outside_grid_warning(mu_tot, sigma_syn, mu_range2, sigma_range2, dt*i)
 
             # interpolate
             # weights_quant = interpolate_xy(mu_tot, sigma_syn, mu_range1, sigma_range1)
@@ -104,7 +108,7 @@ def run_spec2_red(ext_signal, params, filename_h5,
     if FS:
         raise NotImplementedError('FS-effects not implemented for LNexp model!')
 
-    print('----- intergating (reduced) spec2-model')
+    print('=============== integrating (reduced) spec2-model ===============')
 
     # runtime parameters
     dt = params['uni_dt'] # time resolution for spectral mattia model
@@ -136,6 +140,7 @@ def run_spec2_red(ext_signal, params, filename_h5,
     delay_type = params['delay_type']
     # integration method
     uni_int_order = params['uni_int_order']
+    grid_warn = params['grid_warn']
 
     # membrane capacitance
     C = params['C']
@@ -158,7 +163,7 @@ def run_spec2_red(ext_signal, params, filename_h5,
     results = sim_spec2_red(mu_ext,sigma_ext,steps,dt,Ew,a,b,C,tauw,map_Vmean,
                                 map_r,mu_tab,sig_tab,lambda_1,
                                 lambda_2_mattia,rec,K,J,delay_type,n_d,
-                                taud, r0, s0, w0, uni_int_order)
+                                taud, r0, s0, w0, uni_int_order, grid_warn)
     #store results in dictionary which is returned
     results_dict = dict()
     results_dict['r'] = results[0]

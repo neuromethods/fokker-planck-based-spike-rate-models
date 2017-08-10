@@ -3,7 +3,7 @@ import sys
 from scipy.misc import derivative
 from matplotlib.pyplot import *
 import time
-from misc.utils import interpolate_xy, lookup_xy, x_filter
+from misc.utils import interpolate_xy, lookup_xy, x_filter, outside_grid_warning
 import tables
 import numpy as np
 import math
@@ -21,10 +21,11 @@ except:
 @njit
 def sim_spec2(mu_ext, dmu_ext_dt, d2mu_ext_dt2, sig_ext,
                dsig_ext2_dt, d2sig_ext2_dt2, steps, t, dt, mu_range,
-               sig_range, rec, delay_type, const_delay, K, J, taud, tauw, a, b, C,wm0, Ew,
-               r_inf_map, Vm_inf_map, T_map, S_sig_map, D_map, M_map, Fmu_map,
-               Fsig_map, dVm_dsig_map, dVm_dmu_map, dr_inf_dmu_map,
-               dr_inf_dsig_map, fC_mu_map,fC_sig_map, uni_int_order, rectify):
+               sig_range, rec, delay_type, const_delay, K, J, taud,
+               tauw, a, b, C,wm0, Ew, r_inf_map, Vm_inf_map, T_map,
+               S_sig_map, D_map, M_map, Fmu_map, Fsig_map, dVm_dsig_map,
+               dVm_dmu_map, dr_inf_dmu_map, dr_inf_dsig_map, fC_mu_map,
+               fC_sig_map, uni_int_order, rectify, grid_warn = True):
 
 
     # state variables
@@ -127,7 +128,9 @@ def sim_spec2(mu_ext, dmu_ext_dt, d2mu_ext_dt2, sig_ext,
 
 
 
-
+            # outside-grid warning
+            if grid_warn and j == 0:
+                outside_grid_warning(mu_tot[i+j], sig_tot[i+j], mu_range, sig_range, dt*i)
             # get weights for looking up the quantities for the respective 
             # total synaptic input moments
             weights = interpolate_xy(mu_tot[i+j], sig_tot[i+j], mu_range, sig_range)
@@ -296,7 +299,7 @@ def run_spec2(ext_signal, params, filename_h5,
     if FS:
         raise NotImplementedError('FS-effects not implemented for spectral 2m model!')
 
-    print('----- integrating spec2-model')
+    print('==================== integrating spec2-model ====================')
 
     # runtime parameters
     dt = params['uni_dt']
@@ -328,8 +331,9 @@ def run_spec2(ext_signal, params, filename_h5,
     const_delay = params['const_delay']
     # time integration method
     uni_int_order = params['uni_int_order']
-    # boolean for rectification
+    # booleans for rectification & grid-warning
     rectify = params['rectify_spec_models']
+    grid_warn = params['grid_warn']
 
     # membrane capacitance
     C = params['C']
@@ -430,12 +434,12 @@ def run_spec2(ext_signal, params, filename_h5,
 
 
     results = sim_spec2(mu_ext,dmu_ext_dt,d2mu_ext_dt2,
-                         sig_ext, dsig_ext2_dt,d2sig_ext2_dt2,steps,t,dt,
-                         mu_tab,sig_tab,rec,delay_type, const_delay,
-                         K, J,taud,tauw,a,b,C,wm0,
-                         Ew,r_inf, V_mean_inf,T,S_sig,D,M,F_mu,F_sig,
-                         dVm_dsig,dVm_dmu,dr_inf_dmu,dr_inf_dsigma,fC_mu,
-                         fC_sig, uni_int_order, rectify)
+                        sig_ext, dsig_ext2_dt,d2sig_ext2_dt2,steps,
+                        t,dt, mu_tab, sig_tab,rec,delay_type, const_delay,
+                        K, J,taud,tauw,a,b,C,wm0, Ew,r_inf, V_mean_inf,T,
+                        S_sig,D,M,F_mu,F_sig, dVm_dsig,dVm_dmu,dr_inf_dmu,
+                        dr_inf_dsigma,fC_mu, fC_sig, uni_int_order, rectify,
+                        grid_warn)
 
     results_dict = dict()
     results_dict['t'] = t
