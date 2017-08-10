@@ -9,6 +9,7 @@ def get_params():
     params['rectify_spec_models'] = True
     params['uni_dt'] = 0.05  #[ms]
     params['uni_int_order'] = 1 # (1:Euler, 2:Heun)
+    params['grid_warn'] = True #outside grid warn
 
     # params for ou process #
     params['ou_stationary'] = True # if False --> ou process starts at X0
