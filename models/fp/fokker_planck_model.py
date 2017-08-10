@@ -289,6 +289,7 @@ def sim_fp_sg(input, params, rec = False, FS=False):#, timing=None):
 
 
     # print('running sg scheme')
+    print('===================== integrating fp-model ======================')
 
 
     # time domain
@@ -336,7 +337,6 @@ def sim_fp_sg(input, params, rec = False, FS=False):#, timing=None):
     if type(b) in [int,float]:
         b = np.ones_like(mu_ext)*b
     have_adap = True if (a.any() or b.any()) else False
-    print('have adapt: {}'.format(have_adap))
     Ew = params['Ew']
     tauw = params['tauw']
     b_tauw=b*tauw
@@ -358,12 +358,8 @@ def sim_fp_sg(input, params, rec = False, FS=False):#, timing=None):
 
     N = params['N_total']
     noise_type = params['noise_type']
-    print(noise_type)
-    #exit()
     N_dt = N*dt
     norm_type = params['norm_type']
-    print(norm_type)
-    #exit()
     force_normalization = (norm_type is not None) and FS
 
 
@@ -404,8 +400,6 @@ def sim_fp_sg(input, params, rec = False, FS=False):#, timing=None):
     Adt = np.zeros((3,grid.N_V))
     reinject_ib = np.zeros(grid.N_V); reinject_ib[grid.ib] = 1.
 
-
-    print('new version')
     for n in xrange(steps):
 
         # print sim time information
