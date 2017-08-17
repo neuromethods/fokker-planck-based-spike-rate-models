@@ -275,25 +275,27 @@ def initial_p_distribution(grid,params):
     p_init =p_init/np.sum(p_init*grid.dV_interfaces)
     return p_init
 
+@njit
+def get_r_numba(v_end, dV, D, p_end):
+    '''rate calculation'''
+    r = v_end*((1.+exp((-v_end*dV)/D))/(1.-exp((-v_end*dV)/D)))*p_end
+    return r
+
+
 # current version for model comparison
 # currently without FS effects until everything is tested
-def sim_fp_sg_fpt(input, params, fpt=True, rt=list()):#, timing=None):
+def sim_fp_sg_fpt(mu_ext, sigma_ext, params, fpt=True, rt=list()):#, timing=None):
     '''solving the fp equation (first passage time)
      using the scharfetter gummel method'''
 
-
-    integration_method = params['integration_method']
     dt = params['fp_dt']
 
     # external input
-    mu_ext = input[0]
-    sigma_ext = input[1]
-    assert len(mu_ext) == len(sigma_ext)
+    #assert len(mu_ext) == len(sigma_ext)
 
 
-    t_ref = max(params['t_ref'], dt) # ensure that t_ref is at least a timestep
-    n_ref = int(t_ref/dt)
-    DT = params['deltaT']
+    T_ref = params['T_ref']
+    DT = params['DeltaT']
     EL = params['EL']
     VT = params['VT']
     taum = params['taum']
@@ -307,27 +309,38 @@ def sim_fp_sg_fpt(input, params, fpt=True, rt=list()):#, timing=None):
                 N_V=params['N_centers_fp'])
 
     # initial density
-    p0 = initial_p_distribution(grid, params)
+    #p0 = initial_p_distribution(grid, params)
 
 
     # initialize arrays
-    r   = np.zeros_like(mu_ext)
-    mu_tot    = np.zeros_like(mu_ext)
-    sigma_tot = np.zeros_like(mu_ext)
-    int_P     = np.zeros_like(mu_ext)
-    int_ref   = np.zeros_like(mu_ext)
-    mass_timecourse = np.zeros_like(mu_ext)
-    Vmean = np.zeros_like(mu_ext)
+    r = np.zeros_like(mu_ext)
+#    mu_tot    = np.zeros_like(mu_ext)
+#    sigma_tot = np.zeros_like(mu_ext)
+    #int_P     = np.zeros_like(mu_ext)
+    #int_ref   = np.zeros_like(mu_ext)
+    #mass_timecourse = np.zeros_like(mu_ext)
+    #Vmean = np.zeros_like(mu_ext)
 
 
     # optimizations
     dV = grid.dV
-    p = p0
+    #p = p0
     Adt = np.zeros((3,grid.N_V))
-    reinject_ib = np.zeros(grid.N_V); reinject_ib[grid.ib] = 1.
+    #reinject_ib = np.zeros(grid.N_V); reinject_ib[grid.ib] = 1.
 
     # used for resetting p to Vr
     rc=0
+    n_rt = len(rt)
+    
+    ones_mat = np.ones(grid.N_V)
+    
+    # drift coefficients
+    v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT,
+                    taum, mu_ext[0], EIF = EIF_model)  
+    # Diffusion coefficient
+    D = (sigma_ext[0] ** 2) * 0.5  
+    # create banded matrix A 
+    matAdt_opt(Adt,grid.N_V,v,D,dV,dt)
 
     for n in xrange(len(mu_ext)):
         # print('---------------------')
@@ -335,18 +348,25 @@ def sim_fp_sg_fpt(input, params, fpt=True, rt=list()):#, timing=None):
         # print(n*dt)
         # print(reset_times[reset_counter]+dt)
 
-        if rt[rc]<= n*dt < rt[rc]+dt:
+        if rc<n_rt and rt[rc]<= n*dt < rt[rc]+dt:
             p = initial_p_distribution(grid, params)
-            rc = min(len(rt)-1, rc+1)
-
+            rc += 1
+            
+        if rc-1<n_rt and rt[rc-1]<= n*dt < rt[rc-1]+T_ref+dt:
+            r[n] = 0
+        else:
+            
+        # optional:
         # calculate mass inside and outside the comp. domain
-        int_P[n] = np.sum(p*dV)
-        int_ref[n] = np.sum(r[n-n_ref:n]*dt)
+        #int_P[n] = np.sum(p*dV)
+        #int_ref[n] = np.sum(r[n-n_ref:n]*dt)
+        #mass_timecourse[n] = int_P[n] + int_ref[n]
+        
         # normalize the density in the inner domain
-        p_marg = p/int_P[n]
+        #p_marg = p/int_P[n]
         # calculate the mean membrane voltage
-        Vmean[n] = np.sum(p_marg*grid.V_centers*dV)
-        mass_timecourse[n] = int_P[n] + int_ref[n]
+        #Vmean[n] = np.sum(p_marg*grid.V_centers*dV)
+        
 
         # print out some information
         # if n%inform==0:
@@ -354,43 +374,45 @@ def sim_fp_sg_fpt(input, params, fpt=True, rt=list()):#, timing=None):
         #            format((float(n)*100/steps), mass_timecourse[n]))
 
 
-        # mu_ext --> mu_syn
-        mu_tot[n] = mu_ext[n]
-        sigma_tot[n] = sigma_ext[n]
+#        # mu_ext --> mu_syn
+#        mu_tot[n] = mu_ext[n]
+#        sigma_tot[n] = sigma_ext[n]
 
-        # drift coefficients
-        v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT,
-                        taum, mu_tot[n], EIF = EIF_model)
+            if n>0:
+                toggle = False
+                if mu_ext[n]!=mu_ext[n-1]:
+                    # drift coefficients
+                    v = get_v_numba(grid.N_V+1, grid.V_interfaces, DT, EL, VT,
+                                    taum, mu_ext[n], EIF = EIF_model)
+                    toggle = True
+                if sigma_ext[n]!=sigma_ext[n-1]:
+                    # Diffusion coefficient
+                    D = (sigma_ext[n] ** 2) * 0.5
+                    toggle = True
+                if toggle:
+                    # create banded matrix A in each time step
+                    matAdt_opt(Adt,grid.N_V,v,D,dV,dt)
+            
 
-        # Diffusion coefficient
-        D = (sigma_tot[n] ** 2) * 0.5
-
-        # create banded matrix A in each time step
-        matAdt_opt(Adt,grid.N_V,v,D,dV,dt)
-
-        # chose between three different integration schemes
-        # 1: implicit Euler
-        if integration_method == 'implicit':
-            rhs = p.copy()
-            # reinject either the noisy rate or the
-            reinjection = r[n-n_ref]*(dt/dV)
-            # toggle first passage time computation
-            if not fpt: rhs[grid.ib] += reinjection
+            rhs = p.copy()   
+            # toggle first passage time computation     
+#            if not fpt: 
+#                reinjection = r[n-n_ref]*(dt/dV)
+#                rhs[grid.ib] += reinjection
             Adt *= -1.
-            Adt[1,:] += np.ones(grid.N_V)
+            Adt[1,:] += ones_mat
             # solve the linear system
             p_new = solve_banded((1, 1), Adt, rhs)
-        else: raise NotImplementedError
 
-        # compute rate
-        r[n] = (v[-1]*((1.+exp((-v[-1]*dV)/D))/(1.-exp((-v[-1]*dV)/D)))*p_new[-1])
-
-
-        # overwrite P with updated P_new
-        p = p_new
+            # compute rate / likelihood
+            r[n] = get_r_numba(v[-1], dV, D, p_new[-1])
+            # = (v[-1]*((1.+exp((-v[-1]*dV)/D))/(1.-exp((-v[-1]*dV)/D)))*p_new[-1])
+    
+            # overwrite P with updated P_new
+            p = p_new
 
     # return time, rates and adaptation arrays
-    results = {'r':r*1000}
+    results = {'r':r}
     return results
 
 
