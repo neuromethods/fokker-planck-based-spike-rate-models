@@ -82,6 +82,8 @@ def calc_EIF_output_and_cascade_quants(mu_vals, sigma_vals, params,
                     EIF_output_dict[k][imu,isig] = res_given_sigma_dict[k][imu] 
                 if k in quantity_names:
                     LN_quantities_dict[k][imu,isig] = res_given_sigma_dict[k][imu]    
+    if pool:
+        pool.close()
     
     # also include mu_vals, sigma_vals, and freq_vals in output dictionaries
     EIF_output_dict['mu_vals'] = mu_vals
