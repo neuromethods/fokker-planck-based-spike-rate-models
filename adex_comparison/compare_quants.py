@@ -39,10 +39,28 @@ for q in h5file.root:
 h5file.close()
 
 
+print(d1.keys())
+print(d1['mu'].shape)
 
-plt.plot(d1['mu'], d1['f_2'][:, 0], label = 'master')
+
+idx = 6
+fig = plt.figure()
+fig.suptitle('f_quantities')
+plt.plot(d1['mu'], d1['psi_r_2'][:,idx], label = 'master')
 # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
-plt.plot(d2['mu'], d2['f'][1, :, 0], label = 'devel')
-# plt.plot(devel['mu'], devel['psi_r'][1, :, 1], label = 'devel')
+plt.plot(d2['mu'], d2['psi_r'][1, :, idx], label = 'devel')
+
+fig = plt.figure()
+plt.plot(d1['mu'], d1['f_2'][:,idx], label = 'master')
+# plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
+plt.plot(d2['mu'], d2['f'][1, :, idx], label = 'devel')
 plt.legend()
+
+fig = plt.figure()
+plt.plot(d1['mu'], d1['r_inf'][:,idx], label = 'master')
+# plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
+plt.plot(d2['mu'], d2['r_inf'][:, idx], label = 'devel')
+plt.legend()
+
+
 plt.show()
