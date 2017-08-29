@@ -7,7 +7,7 @@ import numpy as np
 
 
 filename_devel = 'quantities_spectral.h5'
-filename_master = 'quantities_spectral_should_be_equal.h5'
+filename_master = 'quantities_spectral_master.h5'
 
 
 # define mu, sigma
@@ -39,21 +39,19 @@ for q in h5file.root:
 h5file.close()
 
 
-print(d1.keys())
-print(d1['mu'].shape)
 
 
-idx = 6
+idx = 30
 fig = plt.figure()
-fig.suptitle('f_quantities')
+fig.suptitle('psi_stuff')
 plt.plot(d1['mu'], d1['psi_r_2'][:,idx], label = 'master')
 # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
 plt.plot(d2['mu'], d2['psi_r'][1, :, idx], label = 'devel')
 
 fig = plt.figure()
-plt.plot(d1['mu'], d1['f_2'][:,idx], label = 'master')
+plt.plot(d1['mu'], d1['f_1'][:,idx], label = 'master')
 # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
-plt.plot(d2['mu'], d2['f'][1, :, idx], label = 'devel')
+plt.plot(d2['mu'], d2['f'][0, :, idx], label = 'devel')
 plt.legend()
 
 fig = plt.figure()
@@ -62,5 +60,23 @@ plt.plot(d1['mu'], d1['r_inf'][:,idx], label = 'master')
 plt.plot(d2['mu'], d2['r_inf'][:, idx], label = 'devel')
 plt.legend()
 
-
+# fig = plt.figure()
+# plt.plot(d1['mu'], d1['c_mu_2'][:,idx], label = 'master')
+# # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
+# plt.plot(d2['mu'], d2['c_mu'][1, :, idx], label = 'devel')
+# plt.legend()
+#
+# fig = plt.figure()
+# plt.suptitle('blablabla')
+# plt.plot(d1['mu'], d1['lambda_1'][:,idx].imag, label = 'master')
+# # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
+# plt.legend()
+#
+#
+#
+# fig = plt.figure()
+# plt.suptitle('blablabla')
+# plt.plot(d2['mu'], d2['C_mu'][:,idx].imag, label = 'master')
+# # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
+plt.legend()
 plt.show()
