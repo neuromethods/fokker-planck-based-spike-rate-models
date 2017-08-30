@@ -321,6 +321,10 @@ if compute_quant and not quant_loaded:
         specsolv.save_quantities(folder+'/'+filename, quantities_dict)
         print('saving quantities after computing done.')
 
+    # args:
+    # quant_names = [lambda, f, psi_r ...]
+    # hardcoded in the func (first two eigenvalues)
+
 if postprocess_quant:
     
     # remove artefacts due to proximity to double eigenvalues at the transition from real to complex
@@ -422,6 +426,8 @@ if plot_validation:
         quantities_validation['r_inf'] = quantities_validation['r_ss']
         quantities_validation['V_mean_inf'] = quantities_validation['V_mean_ss']
 
+# TODO: enable all plotting stuff and adapt to new general data format
+
 if plot_quantities and 'eigvals' in plot_quantities:
     
     plot_quantities_eigvals(quantities_dict, inds_sigma_plot, colormap_sigma=colormap_sigma,
@@ -436,7 +442,8 @@ if plot_quantities and 'real' in plot_quantities:
     
 
 if plot_quantities and 'complex' in plot_quantities:
-    
+    #TODO: update required after generalization
+
     # the following lines contain some examples of quantities
     # which could be plotted by the plot_quantities entry 'complex'
     complex_quants_plot = ['f_1', 'f_1*c_mu_1', 'c_mu_1']

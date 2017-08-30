@@ -326,14 +326,23 @@ def  compute_quantities_given_sigma(arg_tuple):
         # assuming same V grid for all mu sigma and all eigenfunctions
         global V_arr_cache
         V_arr_cache = None 
-        
+
+        # replace the psi_1_cache and psi_2_cache by the following commented ideas
+        psi_N_cache = [None]*N_eigvals
+        phi_N_cache = [None]*N_eigvals
+        dpsi_dmu_N_cache = [None]*N_eigvals
+        dpsi_dsigma_N_cache = [None]*N_eigvals
+
+        # TODO: move the following comment upwards and optimally add how often we use each cached item
         # psi1,2 are required for (i) f_1,2 due to phi normalization => biorth, and (ii) psi_r_* itself
         # (however, we disable this caching for computation of c_k_x quantities 
         # where psi(mu+-dmu,sigma+-dsigma) are required)
-        global psi_1_cache
-        psi_1_cache = None
-        global psi_2_cache
-        psi_2_cache = None
+
+        #old version was:
+        #global psi_1_cache
+        #psi_1_cache = None
+        #global psi_2_cache
+        #psi_2_cache = None
 
         # calculate quantities 
         for q in quant_names:
@@ -621,9 +630,9 @@ class SpectralSolver(object):
                              'C_mu', 'C_sigma'], N_eigvals = 2,
                               N_procs=multiprocessing.cpu_count()):
 
-
         print('START: computing quantity rect: {}'.format(quant_names))
 
+        # replace the following lambdas with lambda_selected if existant
         # lambda_1 & lambda_2 --> lambda_all
         lambda_1 = quantities_dict['lambda_1']
         lambda_2 = quantities_dict['lambda_2']
@@ -1996,7 +2005,10 @@ def plot_quantities_complex(complex_quants_plot, quantities, inds_sigma_plot,
         q_mult_index = q.find('*')            
         if q_mult_index >= 0:
             q_left = q[:q_mult_index]
+            # TODO: see q_right
             q_right = q[q_mult_index+1:]
+            # TODO: expand the string q_right='c_mu_1' into the string q_name = 'c_mu' and q_ind = 0
+
             quantities[q] = quantities[q_left] * quantities[q_right]
             # validation (currently manually computed in script)
             if plot_validation and q_left in quantities_validation and q_right in quantities_validation:

@@ -42,7 +42,7 @@ h5file.close()
 print(d2.keys())
 # exit()
 
-idx =0
+idx =-1
 fig = plt.figure()
 fig.suptitle('psi_r')
 plt.plot(d1['mu'], d1['psi_r_2'][:,idx], label = 'master')
@@ -66,7 +66,7 @@ plt.legend()
 
 fig = plt.figure()
 plt.suptitle('c_mu')
-plt.plot(d1['mu'], d1['c_mu_1'][:,idx].imag, label = 'master')
-plt.plot(d2['mu'], d2['c_mu'][0,:,idx].imag, label = 'master')
+plt.plot(d1['mu'], d1['c_mu_1'][:,idx], label = 'master')
+plt.plot(d2['mu'], d2['c_mu'][0,:,idx], label = 'devel')
 plt.legend()
 plt.show()
