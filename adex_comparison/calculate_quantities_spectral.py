@@ -304,7 +304,8 @@ if compute_quant and not quant_loaded:
                                         # computation of all quants
                                         quant_names = ['f',
                                                        'psi_r',
-                                                       # 'c_mu', # 'c_sigma',
+                                                       'c_mu',
+                                                       # 'c_sigma',
                                                        'r_inf'
                                                        # 'C_mu', # 'C_sigma'
                                                        ],
@@ -324,7 +325,7 @@ if postprocess_quant:
     
     # remove artefacts due to proximity to double eigenvalues at the transition from real to complex
     # by taking the value of the nearest neighbor for those mu, sigma values
-    
+    # Todo: adapt for new quantity computation
     quantities_postprocess(quantities_dict, 
                            quant_names=['lambda_1', 'lambda_2',
                                         'f_1', 'f_2', 
