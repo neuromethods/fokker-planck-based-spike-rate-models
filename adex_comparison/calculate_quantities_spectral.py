@@ -303,12 +303,12 @@ if compute_quant and not quant_loaded:
                                         # comment out for default
                                         # computation of all quants
                                         quant_names = ['f',
-                                                       'psi_r',
-                                                       'c_mu',
-                                                       'c_sigma',
-                                                       'r_inf',
-                                                       'C_mu',
-                                                       'C_sigma'
+                                                       # 'psi_r',
+                                                       # 'c_mu',
+                                                       # 'c_sigma',
+                                                       # 'r_inf',
+                                                       # 'C_mu',
+                                                       # 'C_sigma'
                                                        ],
                                         N_eigvals=2, N_procs=8)
 

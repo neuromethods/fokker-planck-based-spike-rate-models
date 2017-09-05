@@ -329,6 +329,10 @@ def  compute_quantities_given_sigma(arg_tuple):
 
         # replace the psi_1_cache and psi_2_cache by the following commented ideas
         # this is a list of all the cached values
+        global psi_N_cache
+        global phi_N_cache
+        global dpsi_dmu_N_cache
+        global dpsi_dsigma_N_cache
         psi_N_cache = [None]*N_eigvals
         phi_N_cache = [None]*N_eigvals
         dpsi_dmu_N_cache = [None]*N_eigvals
@@ -336,7 +340,7 @@ def  compute_quantities_given_sigma(arg_tuple):
 
         # TODO: move the following comment upwards and optimally add how often we use each cached item
         # psi1,2 are required for (i) f_1,2 due to phi normalization => biorth, and (ii) psi_r_* itself
-        # (however, we disable this caching for computation of c_k_x quantities 
+        # (however, we disable this caching for computation of c_k_x quantities
         # where psi(mu+-dmu,sigma+-dsigma) are required)
 
         #old version was:
@@ -395,6 +399,7 @@ def  compute_quantities_given_sigma(arg_tuple):
             if q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                 for n in xrange(N_eigvals):
                     # get the eigenvalue n for the respective mu, sigma
+                    # this is still important to get the correct quantities
                     if n == 0:
                         lambda_n_ij = lambda_1[i, j]
                     elif n == 1:
