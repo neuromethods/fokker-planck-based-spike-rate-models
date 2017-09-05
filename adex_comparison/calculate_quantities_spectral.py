@@ -292,7 +292,7 @@ if compute_quant and not quant_loaded:
     # do the actual quantity computation of the mu sigma rectangle via the following method call
     # restrict mu, sigma
 
-    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)# [:7]
+    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)[:7]
     quantities_dict['mu'] = np.linspace(-1.5, 10., N_mu)
 
 
@@ -305,11 +305,12 @@ if compute_quant and not quant_loaded:
                                         quant_names = ['f',
                                                        'psi_r',
                                                        'c_mu',
-                                                       # 'c_sigma',
-                                                       'r_inf'
-                                                       # 'C_mu', # 'C_sigma'
+                                                       'c_sigma',
+                                                       'r_inf',
+                                                       'C_mu',
+                                                       'C_sigma'
                                                        ],
-                                        N_eigvals=2,  N_procs=8)
+                                        N_eigvals=2, N_procs=8)
 
 
     # SAVING
@@ -379,7 +380,7 @@ if obtain_fluxlb:
         quantities_dict.update(fluxlb_quants) # merge into other quantities as saving overwrites the whole file
         specsolv.save_quantities(folder+'/'+filename, quantities_dict)
         
-        print('saving obtained fluxes at lower bound after computing them')   
+        print('saving obtained fluxes at lower bound after computing them')
             
 
 # PLOTTING

@@ -328,6 +328,7 @@ def  compute_quantities_given_sigma(arg_tuple):
         V_arr_cache = None 
 
         # replace the psi_1_cache and psi_2_cache by the following commented ideas
+        # this is a list of all the cached values
         psi_N_cache = [None]*N_eigvals
         phi_N_cache = [None]*N_eigvals
         dpsi_dmu_N_cache = [None]*N_eigvals
@@ -394,7 +395,14 @@ def  compute_quantities_given_sigma(arg_tuple):
             if q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                 for n in xrange(N_eigvals):
                     # get the eigenvalue n for the respective mu, sigma
-                    lambda_n_ij = lambda_all[n, i, j]
+                    if n == 0:
+                        lambda_n_ij = lambda_1[i, j]
+                    elif n == 1:
+                        lambda_n_ij = lambda_2[i, j]
+                    else:
+                        print('only implemented eigenvalues 1 and 2')
+
+                    # lambda_n_ij = lambda_all[n, i, j]
                     # vector of f's
                     if q == 'f':
                         V_arr, phi_n, q_n = phiN(mu_i, sigma_j, lambda_n_ij)
@@ -623,7 +631,7 @@ class SpectralSolver(object):
         return lambda_all
     
 
-    def compute_quantities_rect(self, quantities_dict, 
+    def compute_quantities_rect(self, quantities_dict,
                 quant_names=['r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
                              'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
                              'f', 'psi_r', 'c_mu', 'c_sigma',
