@@ -26,6 +26,7 @@ from collections import OrderedDict
 import os
 from multiprocessing import cpu_count
 import matplotlib
+import time
 matplotlib.rcParams['text.usetex'] = True
 
 
@@ -292,25 +293,29 @@ if compute_quant and not quant_loaded:
     # do the actual quantity computation of the mu sigma rectangle via the following method call
     # restrict mu, sigma
 
-    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)[:7]
+    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)# [:7]
     quantities_dict['mu'] = np.linspace(-1.5, 10., N_mu)
 
 
     # this method adds the computed quantities to the
     # (specified in quant_names=[...] to quantities_dict
     # remove N_procs = 1 again
+    t1 = time.time()
     specsolv.compute_quantities_rect(quantities_dict,
                                         # comment out for default
                                         # computation of all quants
                                         quant_names = ['f',
-                                                       # 'psi_r',
-                                                       # 'c_mu',
-                                                       # 'c_sigma',
+                                                       'psi_r',
+                                                       'c_mu',
+                                                       'c_sigma',
                                                        # 'r_inf',
                                                        # 'C_mu',
                                                        # 'C_sigma'
                                                        ],
                                         N_eigvals=2, N_procs=8)
+    print('------------------------')
+    print(time.time()-t1)
+    print('------------------------')
 
 
     # SAVING

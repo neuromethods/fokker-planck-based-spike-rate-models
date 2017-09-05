@@ -261,14 +261,16 @@ def  compute_quantities_given_sigma(arg_tuple):
     # general helpers (N)
 
     # extend for caching later
-    def psiN(mu, sigma, lambda_N):
-        V_arr, psi_N, dpsi = specsolv.eigenfunction(lambda_N, mu, sigma,
+    def psiN(mu, sigma, lambda_N, n):
+        global psi_N_cache, V_arr_cache
+        if psi_N_cache[n] is None:
+            V_arr_cache, psi_N_cache[n], dpsi = specsolv.eigenfunction(lambda_N, mu, sigma,
                                                     adjoint=True)
-        return V_arr, psi_N
+        return V_arr_cache, psi_N_cache[n]
 
 
-    def phiN(mu, sigma, lambda_N):
-        V_arr, psi_N = psiN(mu, sigma, lambda_N)
+    def phiN(mu, sigma, lambda_N, n):
+        V_arr, psi_N = psiN(mu, sigma, lambda_N, n)
         V_arr, phi_N, q_N = specsolv.eigenfunction(lambda_N, mu, sigma)
         inprodN = inner_prod(psi_N, phi_N, V_arr)
         # if params['verboselevel'] > 0:
@@ -328,11 +330,13 @@ def  compute_quantities_given_sigma(arg_tuple):
         V_arr_cache = None 
 
         # replace the psi_1_cache and psi_2_cache by the following commented ideas
-        # this is a list of all the cached values
+        # new cached values
         global psi_N_cache
         global phi_N_cache
         global dpsi_dmu_N_cache
         global dpsi_dsigma_N_cache
+        # for all results where V_arr is needed!
+        V_arr_cache = None
         psi_N_cache = [None]*N_eigvals
         phi_N_cache = [None]*N_eigvals
         dpsi_dmu_N_cache = [None]*N_eigvals
@@ -410,10 +414,9 @@ def  compute_quantities_given_sigma(arg_tuple):
                     # lambda_n_ij = lambda_all[n, i, j]
                     # vector of f's
                     if q == 'f':
-                        V_arr, phi_n, q_n = phiN(mu_i, sigma_j, lambda_n_ij)
+                        V_arr, phi_n, q_n = phiN(mu_i, sigma_j, lambda_n_ij, n)
                         f_n = q_n[-1]
                         # print('mu {}, sigma {}'.format(mu_i, sigma_j))
-                        print('f_{}: {}'.format(n+1, f_n))
                         # time.sleep(10)
                         # save in quant_j-dict
                         quant_j[q][n][i] = f_n
@@ -421,7 +424,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                     # vector of psi_r's
                     # psi_r_k is just the eigenfunction psi_k evaluated at the reset
                     if q == 'psi_r':
-                        V_arr, psi_n = psiN(mu_i, sigma_j, lambda_n_ij)
+                        V_arr, psi_n = psiN(mu_i, sigma_j, lambda_n_ij, n)
                         k_r = np.argmin(np.abs(V_arr-params['V_r']))
                         psi_r_n = psi_n[k_r]
                         #save in quant_j-dict
@@ -433,10 +436,10 @@ def  compute_quantities_given_sigma(arg_tuple):
                     if q == 'c_mu':
                         # we need to evaluate psi_n(mu+-dmu) and thus lambda_n(mu+-dmu)
                         lambda_n_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_n_ij)
-                        V_arr, psi_n_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_n_plus_mu)
+                        V_arr, psi_n_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_n_plus_mu, n)
 
                         lambda_n_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_n_ij)
-                        V_arr, psi_n_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_n_minus_mu)
+                        V_arr, psi_n_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_n_minus_mu, n)
 
                         # discretization of the partial derivative of psi w.r.t mu
                         dpsi_n_dmu = (psi_n_plus_mu - psi_n_minus_mu)/(2*dmu)
@@ -453,10 +456,10 @@ def  compute_quantities_given_sigma(arg_tuple):
 
                         # we need to evaluate psi_n(sigma+-dsigma) and thus lambda_n(sigma+-dsigma)
                         lambda_n_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_n_ij)
-                        V_arr, psi_n_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_n_plus_sigma)
+                        V_arr, psi_n_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_n_plus_sigma, n)
 
                         lambda_n_minus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j-dsigma), lambda_n_ij)
-                        V_arr, psi_n_minus_sigma = psiN(mu_i, sigma_j-dsigma, lambda_n_minus_sigma)
+                        V_arr, psi_n_minus_sigma = psiN(mu_i, sigma_j-dsigma, lambda_n_minus_sigma, n)
 
                         # discretization of the partial derivative of psi w.r.t sigma
                         dpsi_n_dsigma = (psi_n_plus_sigma - psi_n_minus_sigma)/(2*dsigma)
@@ -474,16 +477,16 @@ def  compute_quantities_given_sigma(arg_tuple):
                         lambda_l_ij = lambda_all[l, i, j]
                         if q == 'C_mu':
                             lambda_k_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_k_ij)
-                            V_arr, psi_k_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_k_plus_mu)
+                            V_arr, psi_k_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_k_plus_mu, k)
 
                             lambda_k_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_k_ij)
-                            V_arr, psi_k_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_k_minus_mu)
+                            V_arr, psi_k_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_k_minus_mu, k)
 
                             # compute finite-difference (partial derivative)
                             dpsi_k_dmu = (psi_k_plus_mu-psi_k_minus_mu)/(2*dmu)
 
                             ## Phi
-                            V_arr, phi_l, q_l = phiN(mu_i, sigma_j, lambda_l_ij)
+                            V_arr, phi_l, q_l = phiN(mu_i, sigma_j, lambda_l_ij, l)
                             # compute inner product
                             C_mu_kl = inner_prod(dpsi_k_dmu, phi_l, V_arr)
 
@@ -494,16 +497,16 @@ def  compute_quantities_given_sigma(arg_tuple):
                         if q == 'C_sigma':
                             # todo: check this again
                             lambda_k_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_k_ij)
-                            V_arr, psi_k_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_k_plus_sigma)
+                            V_arr, psi_k_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_k_plus_sigma, k)
 
                             lambda_k_minus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j-dsigma), lambda_k_ij)
-                            V_arr, psi_k_minus_sigma = psiN(mu_i, sigma_j-dsigma, lambda_k_minus_sigma)
+                            V_arr, psi_k_minus_sigma = psiN(mu_i, sigma_j-dsigma, lambda_k_minus_sigma, k)
 
                             # compute finite-difference (partial derivative)
                             dpsi_k_dsigma = (psi_k_plus_sigma-psi_k_minus_sigma)/(2*dsigma)
 
                             ## Phi
-                            V_arr, phi_l, q_l = phiN(mu_i, sigma_j, lambda_l_ij)
+                            V_arr, phi_l, q_l = phiN(mu_i, sigma_j, lambda_l_ij, l)
                             # compute inner product
                             C_sigma_kl = inner_prod(dpsi_k_dsigma, phi_l, V_arr)
 
