@@ -428,6 +428,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                         k_r = np.argmin(np.abs(V_arr-params['V_r']))
                         psi_r_n = psi_n[k_r]
                         #save in quant_j-dict
+                        # print(psi_r_n)
                         quant_j[q][n][i] = psi_r_n
 
                     # vector of c_mu
@@ -440,20 +441,23 @@ def  compute_quantities_given_sigma(arg_tuple):
 
                         lambda_n_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_n_ij)
                         V_arr, psi_n_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_n_minus_mu, n)
-
+                        print(psi_n_plus_mu)
+                        print('----------------')
+                        print(psi_n_minus_mu)
                         # discretization of the partial derivative of psi w.r.t mu
                         dpsi_n_dmu = (psi_n_plus_mu - psi_n_minus_mu)/(2*dmu)
+                        # print(dpsi_n_dmu)
                         V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
-
+                        # print(phi_0_noref)
                         # compute inner product
+                        # print(V_arr)
                         c_mu_n = inner_prod(dpsi_n_dmu, phi_0_noref, V_arr)
-
                         # save in quant_j-dict
+                        # print(c_mu_n)
                         quant_j[q][n][i] = c_mu_n
 
                     # vector of c_sigma
                     if q == 'c_sigma':
-
                         # we need to evaluate psi_n(sigma+-dsigma) and thus lambda_n(sigma+-dsigma)
                         lambda_n_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_n_ij)
                         V_arr, psi_n_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_n_plus_sigma, n)
@@ -466,7 +470,6 @@ def  compute_quantities_given_sigma(arg_tuple):
                         V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
 
                         c_sigma_n = inner_prod(dpsi_n_dsigma, phi_0_noref, V_arr)
-
                         #save in quant_j-dict
                         quant_j[q][n][i] = c_sigma_n
 

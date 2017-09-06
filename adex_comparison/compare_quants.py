@@ -45,19 +45,19 @@ print(d2.keys())
 idx =0
 
 
-fig = plt.figure()
-fig.suptitle('psi_r')
-plt.plot(d1['mu'], d1['psi_r_2'][:,idx], label = 'master')
-# plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
-plt.plot(d2['mu'], d2['psi_r'][1, :, idx], label = 'devel')
-
+# fig = plt.figure()
+# fig.suptitle('psi_r')
+# plt.plot(d1['mu'], d1['psi_r_2'][:,idx], label = 'master')
+# # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
+# plt.plot(d2['mu'], d2['psi_r'][1, :, idx], label = 'devel')
 #
-fig = plt.figure()
-plt.suptitle('f')
-plt.plot(d1['mu'], d1['f_1'][:,idx], label = 'master')
-# plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
-plt.plot(d2['mu'], d2['f'][0, :, idx], label = 'devel')
-plt.legend()
+# #
+# fig = plt.figure()
+# plt.suptitle('f')
+# plt.plot(d1['mu'], d1['f_1'][:,idx], label = 'master')
+# # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
+# plt.plot(d2['mu'], d2['f'][0, :, idx], label = 'devel')
+# plt.legend()
 
 # some stationary quantities
 # fig = plt.figure()
@@ -67,17 +67,17 @@ plt.legend()
 # plt.plot(d2['mu'], d2['r_inf'][:, idx], label = 'devel')
 # plt.legend()
 #
-# # c-quantities
-# fig = plt.figure()
-# plt.suptitle('c_mu')
-# plt.plot(d1['mu'], d1['c_mu_1'][:,idx], label = 'master')
-# plt.plot(d2['mu'], d2['c_mu'][0,:,idx], label = 'devel')
-# plt.legend()
-# plt.show()
-#
-# fig = plt.figure()
-# plt.suptitle('c_sigma')
-# plt.plot(d1['sigma'], d1['c_sigma_1'][:,idx], label = 'master')
-# plt.plot(d2['sigma'], d2['c_sigma'][0,:,idx], label = 'devel')
-# plt.legend()
+# c-quantities
+fig = plt.figure()
+plt.suptitle('c_mu')
+plt.plot(d1['mu'], d1['c_mu_1'][:,idx], label = 'master')
+plt.plot(d2['mu'], d2['c_mu'][0,:,idx], label = 'devel')
+plt.legend()
+plt.show()
+
+fig = plt.figure()
+plt.suptitle('c_sigma')
+plt.plot(d1['mu'], d1['c_sigma_1'][:,idx], label = 'master')
+plt.plot(d2['mu'], d2['c_sigma'][0,:,idx], label = 'devel')
+plt.legend()
 plt.show()
