@@ -263,10 +263,17 @@ def  compute_quantities_given_sigma(arg_tuple):
     # extend for caching later
     def psiN(mu, sigma, lambda_N, n):
         global psi_N_cache, V_arr_cache
-        if psi_N_cache[n] is None:
-            V_arr_cache, psi_N_cache[n], dpsi = specsolv.eigenfunction(lambda_N, mu, sigma,
+        if (psi_N_cache[n][(mu, sigma)] is None):
+            V_arr_cache, psi_N_cache[n][(mu, sigma)], dpsi = specsolv.eigenfunction(lambda_N, mu, sigma,
                                                     adjoint=True)
-        return V_arr_cache, psi_N_cache[n]
+
+
+        return V_arr_cache, psi_N_cache[n][(mu, sigma)]
+
+    def psiN_psi_r(mu, sigma, lambda_N):
+        V_arr_cache, psi_N_cache, dpsi = specsolv.eigenfunction(lambda_N, mu, sigma,
+                                                    adjoint=True)
+        return V_arr_cache, psi_N_cache
 
 
     def phiN(mu, sigma, lambda_N, n):
@@ -289,7 +296,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                              
     # method for obtaining an eigenvalue at mu, sigma specified mu_sigma_target
     # note that a simple call of specsolve.eigenvalue() is not  sufficient due 
-    # to sensitive areas (=> 'robust')
+    # to sensitive areas (=>    'robust')
     def eigenvalue_robust(mu_sigma_init, mu_sigma_target, lambda_init):
         mu_init, sigma_init = mu_sigma_init
         mu_target, sigma_target = mu_sigma_target
@@ -337,7 +344,14 @@ def  compute_quantities_given_sigma(arg_tuple):
         global dpsi_dsigma_N_cache
         # for all results where V_arr is needed!
         V_arr_cache = None
-        psi_N_cache = [None]*N_eigvals
+        # save the results
+        psi_N_cache = [{(mu_i, sigma_j):        None,
+                        (mu_i+dmu, sigma_j):    None,
+                        (mu_i-dmu, sigma_j):    None,
+                        (mu_i, sigma_j+dsigma): None,
+                        (mu_i, sigma_j-dsigma): None} for _ in range(2)]
+
+
         phi_N_cache = [None]*N_eigvals
         dpsi_dmu_N_cache = [None]*N_eigvals
         dpsi_dsigma_N_cache = [None]*N_eigvals
@@ -424,12 +438,22 @@ def  compute_quantities_given_sigma(arg_tuple):
                     # vector of psi_r's
                     # psi_r_k is just the eigenfunction psi_k evaluated at the reset
                     if q == 'psi_r':
+                        # print(len(psi_N_cache))
+                        # print(type(psi_N_cache[0][(mu_i, sigma_j)]))
+                        # print(psi_N_cache[0][(mu_i, sigma_j)])
+                        # print(type(psi_N_cache[1][(mu_i, sigma_j)]))
+                        # print(psi_N_cache[1][(mu_i, sigma_j)])
                         V_arr, psi_n = psiN(mu_i, sigma_j, lambda_n_ij, n)
                         k_r = np.argmin(np.abs(V_arr-params['V_r']))
                         psi_r_n = psi_n[k_r]
                         #save in quant_j-dict
                         # print(psi_r_n)
                         quant_j[q][n][i] = psi_r_n
+                        # print(n)
+                        # print(lambda_n_ij)
+                        # print(psi_N_cache[0][mu_i, sigma_j])
+                        # print(psi_N_cache[1][mu_i, sigma_j])
+                        # print('-----------------')
 
                     # vector of c_mu
                     # inner product between (discretized) partial derivative of psi w.r.t mu and
@@ -441,9 +465,6 @@ def  compute_quantities_given_sigma(arg_tuple):
 
                         lambda_n_minus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i-dmu, sigma_j), lambda_n_ij)
                         V_arr, psi_n_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_n_minus_mu, n)
-                        print(psi_n_plus_mu)
-                        print('----------------')
-                        print(psi_n_minus_mu)
                         # discretization of the partial derivative of psi w.r.t mu
                         dpsi_n_dmu = (psi_n_plus_mu - psi_n_minus_mu)/(2*dmu)
                         # print(dpsi_n_dmu)
@@ -472,7 +493,6 @@ def  compute_quantities_given_sigma(arg_tuple):
                         c_sigma_n = inner_prod(dpsi_n_dsigma, phi_0_noref, V_arr)
                         #save in quant_j-dict
                         quant_j[q][n][i] = c_sigma_n
-
             if q in ['C_mu', 'C_sigma']:
                 for k in range(N_eigvals):
                     for l in range(N_eigvals):

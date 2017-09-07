@@ -42,14 +42,16 @@ h5file.close()
 print(d2.keys())
 # exit()
 
-idx =0
+idx = 0
 
 
-# fig = plt.figure()
-# fig.suptitle('psi_r')
-# plt.plot(d1['mu'], d1['psi_r_2'][:,idx], label = 'master')
-# # plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
+fig = plt.figure()
+fig.suptitle('psi_r')
+plt.plot(d1['mu'], d1['psi_r_1'][:,idx], label = 'master')
+# plt.plot(master['mu'], master['psi_r_2'][:, 21], label = 'master')
 # plt.plot(d2['mu'], d2['psi_r'][1, :, idx], label = 'devel')
+plt.plot(d2['mu'], d2['psi_r'][0, :, idx], label = 'devel')
+plt.legend()
 #
 # #
 # fig = plt.figure()
@@ -70,14 +72,14 @@ idx =0
 # c-quantities
 fig = plt.figure()
 plt.suptitle('c_mu')
-plt.plot(d1['mu'], d1['c_mu_1'][:,idx], label = 'master')
-plt.plot(d2['mu'], d2['c_mu'][0,:,idx], label = 'devel')
+plt.plot(d1['mu'], d1['c_mu_2'][:,idx], label = 'master')
+plt.plot(d2['mu'], d2['c_mu'][1,:,idx], label = 'devel')
 plt.legend()
 plt.show()
-
+#
 fig = plt.figure()
 plt.suptitle('c_sigma')
-plt.plot(d1['mu'], d1['c_sigma_1'][:,idx], label = 'master')
-plt.plot(d2['mu'], d2['c_sigma'][0,:,idx], label = 'devel')
+plt.plot(d1['mu'], d1['c_sigma_2'][:,idx], label = 'master')
+plt.plot(d2['mu'], d2['c_sigma'][1,:,idx], label = 'devel')
 plt.legend()
 plt.show()
