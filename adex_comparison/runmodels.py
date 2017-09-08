@@ -38,7 +38,7 @@ run_ln_bexdos = False
 run_spec1    =    False
 run_spec2   =    False
 run_spec2_red = False
-run_alpha = False
+run_alpha = True
 
 
 # use as default the parameters from file params.py
@@ -84,7 +84,7 @@ params['min_dt'] = min(params['uni_dt'], params['net_dt'],params['fp_dt'])
 
 
 ln_data = 'quantities_cascade.h5'
-spec_data = 'quantities_spectral.h5'
+spec_data = 'quantities_spectral_nightsession.h5'
 params['t_ref'] = 0.0
 
 # plotting section
@@ -96,9 +96,9 @@ plot_adapt = False and (params['a'] > 0 or params['b'] > 0)
 # external input mean
 # for the external input mean and the standard deviation any type of input may be defined, such as constant, step, ramp
 
-# input_mean = 'steps' # similar to Fig1 of manuscript
+input_mean = 'steps' # similar to Fig1 of manuscript
 # input_mean = 'osc'
-input_mean = 'const'
+# input_mean = 'const'
 # input_mean = 'OU'
 # input_mean = 'ramp'
 
