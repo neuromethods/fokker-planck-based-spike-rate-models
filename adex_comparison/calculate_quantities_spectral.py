@@ -84,9 +84,9 @@ compute_spec = False # computes if not loaded
 postprocess_spectrum = False # enforce complex conjugation
 
 save_quant = True # save (and overwrite file) if quantity computation or postprocessing happened
-load_quant = False # loading quantities from file skips quantity calculation unless loading fails
-compute_quant = True # whether to compute quantities at all
-postprocess_quant = False # remove numerical artefacts from quantities
+load_quant = True # loading quantities from file skips quantity calculation unless loading fails
+compute_quant = False # whether to compute quantities at all
+postprocess_quant = True # remove numerical artefacts from quantities
 obtain_fluxlb = True # whether to load or compute if not in file lambda -> q(V_lb) for smallest mu
 
 load_params = True # when loading spectrum or quantities the params dict values gets updated from file
@@ -182,8 +182,8 @@ if compute_spec and not spec_loaded:
 # enforcing complex conjugation and selecting pointwise the two dominant eigenvalues
 
 if postprocess_spectrum:
-    
-    
+
+
     # enforcing complex conjugate pairs of eigenvalues (from the crossing to the right)
     # (since from the iterative solution procedure the sign of the imaginary part is random)
     # it is furthermore not guaranteed that eigenvalue curves corresponding to complex conjugate pairs are following 
@@ -308,7 +308,8 @@ if compute_quant and not quant_loaded:
                                                        'c_sigma',
                                                        'r_inf',
                                                        'C_mu',
-                                                       'C_sigma'
+                                                       'C_sigma',
+                                                       'V_mean_inf'
                                                        ],
                                         N_eigvals=2)
 
@@ -328,16 +329,17 @@ if compute_quant and not quant_loaded:
     # hardcoded in the func (first two eigenvalues)
 
 if postprocess_quant:
+
+    print(quantities_dict.keys())
+    exit()
     
     # remove artefacts due to proximity to double eigenvalues at the transition from real to complex
     # by taking the value of the nearest neighbor for those mu, sigma values
     # Todo: adapt for new quantity computation
     quantities_postprocess(quantities_dict, 
                            quant_names=['lambda_1', 'lambda_2',
-                                        'f_1', 'f_2', 
-                                        'psi_r_1', 'psi_r_2',
-                                        'c_mu_1', 'c_mu_2',
-                                        'c_sigma_1', 'c_sigma_2'], 
+                                        'f', 'psi_r_1', 'psi_r_2',
+                                        'c_mu', 'c_sigma_1', 'c_sigma_2'],
                             minsigma_interp=0.5, maxsigma_interp=5., maxmu_interp=0.52, 
                             tolerance_conjugation=params['tolerance_conjugation'])
     

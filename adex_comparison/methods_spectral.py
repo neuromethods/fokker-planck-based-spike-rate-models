@@ -1688,12 +1688,13 @@ def quantities_postprocess(quantities, quant_names,
     N_mu = mu.shape[0]
     N_sigma = sigma.shape[0]   
     
-    assert all((q in quant_names for q in ['f_1', 'f_2', 'c_mu_1', 'c_mu_2']))
-    
-    f_1 = quantities['f_1']
-    c_mu_1 = quantities['c_mu_1']
-    f_2 = quantities['f_2']
-    c_mu_2 = quantities['c_mu_2']
+    assert all((q in quant_names for q in ['f', 'c_mu']))
+
+    # todo: change these to the new ones
+    f_1 = quantities['f'][0,:,:]
+    c_mu_1 = quantities['c_mu'][0,:,:]
+    f_2 = quantities['f'][1,:,:]
+    c_mu_2 = quantities['c_mu'][1,:,:]
     f_cmu  = f_1*c_mu_1 + f_2*c_mu_2    
     
     for j in range(N_sigma):
@@ -1706,7 +1707,7 @@ def quantities_postprocess(quantities, quant_names,
                 
             for q in quant_names:
                     quant = quantities[q]
-                    q_left = quant[i-1, j] 
+                    q_left = quant[i-1, j]
 #                    q_right = quant[i+1, j]                                                      
                     quant[i, j] = q_left
 #                    quant[i, j] = (q_left+q_right)/2.
@@ -1900,7 +1901,7 @@ def plot_quantities_eigvals(quantities, inds_sigma_plot, colormap_sigma='winter'
 
 def plot_quantities_real(quantities, inds_sigma_plot, colormap_sigma='winter',
                          plot_validation=False, quantities_validation={}, 
-                         marker_validation='o', ms_validation=2, 
+                         marker_validation='o', ms_validation=2,
                          color_validation='black', linestyle_validation='None'):
     
     mu = quantities['mu']

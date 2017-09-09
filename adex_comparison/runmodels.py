@@ -30,13 +30,13 @@ run_fp =       True
 
 # reduced models
 # ln cascade
-run_ln_exp =   False
+run_ln_exp =   True
 run_ln_dos=   False
 run_ln_bexdos = False 
 
 # spectral
-run_spec1    =    False
-run_spec2   =    False
+run_spec1    =    True
+run_spec2   =    True
 run_spec2_red = False
 run_alpha = True
 
@@ -84,7 +84,8 @@ params['min_dt'] = min(params['uni_dt'], params['net_dt'],params['fp_dt'])
 
 
 ln_data = 'quantities_cascade.h5'
-spec_data = 'quantities_spectral_nightsession.h5'
+spec_data = 'quantities_spectral_master.h5'
+spec_data2 = 'quantities_spectral_elnath.h5'
 params['t_ref'] = 0.0
 
 # plotting section
@@ -94,20 +95,21 @@ plot_input = True
 plot_adapt = False and (params['a'] > 0 or params['b'] > 0)
 
 # external input mean
-# for the external input mean and the standard deviation any type of input may be defined, such as constant, step, ramp
+# for the external input mean and the standard deviation any
+# type of input may be defined, such as constant, step, ramp
 
-input_mean = 'steps' # similar to Fig1 of manuscript
+# input_mean = 'steps' # similar to Fig1 of manuscript
 # input_mean = 'osc'
 # input_mean = 'const'
-# input_mean = 'OU'
+input_mean = 'OU'
 # input_mean = 'ramp'
 
 # filter input mean (necessary for spectral_2m model)
 filter_mean = True
 
 input_std = 'const'
-#input_std = 'step'
-#input_std = 'OU'
+# input_std = 'step'
+# input_std = 'OU'
 # input_std = 'ramp'
 filter_std = True
 
@@ -130,8 +132,8 @@ if input_mean == 'const':
 # mu = OU process, sigma = const
 elif input_mean == 'OU':
     params['ou_X0'] = 0.
-    params['ou_mean']  = .2
-    params['ou_sigma'] = .005
+    params['ou_mean']  = 3.
+    params['ou_sigma'] = .05
     params['ou_tau']   = 50.
     mu_ext = generate_OUinput(params)
 
@@ -181,7 +183,7 @@ elif input_mean == 'steps':
 
 # sigma_ext variants
 if input_std == 'const':
-    sigma_ext = np.ones(steps+1) * 4.
+    sigma_ext = np.ones(steps+1) * 1.3
 
 
 elif input_std == 'step':
@@ -193,8 +195,8 @@ elif input_std == 'step':
 # mu = const, sigma = OU process
 elif input_std == 'OU':
     params['ou_X0'] =  0. #only relevant if params['ou_stationary'] = False
-    params['ou_mean']  = 3.0
-    params['ou_sigma'] = 1.2
+    params['ou_mean']  = 2.0
+    params['ou_sigma'] = .2
     params['ou_tau']   = 1.
     sigma_ext = generate_OUinput(params)
 
@@ -309,7 +311,7 @@ if run_spec2_red:
 if run_alpha:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     results['model_results']['alpha'] = \
-        alpha.run_alpha(ext_input, params, spec_data)
+        alpha.run_alpha(ext_input, params, spec_data2)
 
 
 

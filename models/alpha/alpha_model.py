@@ -72,7 +72,7 @@ def sim_alpha(mu_ext, sigma_ext, dmu_dt, dsigma2_dt,
         alpha = alpha + dt*(M.dot(alpha)+c)
         f_alpha = f_vec.dot(alpha.T)
         # get new r
-        r[i+1] = r_inf_val + f_alpha
+        r[i+1] = r_inf_val  + f_alpha
 
         # return results
     return [r*1000, r_without_f_alpha*1000, f_alpha_vec]
