@@ -39,7 +39,7 @@ params = get_params()
 # file containing the full spectrum (all eigenvalues), 
 # the two dominant eigenvalues as well as all further quantities for 
 # a rectangle of input parameter values for the mean and std dev (mu, sigma)
-filename = 'quantities_spectral.h5'
+filename = 'quantities_spectral_elnath.h5'
 
 folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
 
@@ -270,14 +270,18 @@ else:
 quant_loaded = False
 if load_quant:
 
+    # todo: make it possible to load not the whole list
     quant_names = [ 'lambda_1', 'lambda_2',
-                    'r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
-                    'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
+                    'r_inf',
+                    # 'dr_inf_dmu', 'dr_inf_dsigma',
+                    # 'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
                     'f', 'psi_r', 'c_mu', 'c_sigma', 'C_mu', 'C_sigma',
                     'mu', 'sigma']
 
     specsolv.load_quantities(folder+'/'+filename, quantities_dict, 
                              quantities=quant_names, load_params=load_params)
+
+    print(quantities_dict.keys())
     quant_loaded = True
 
 quant_computed = False
@@ -330,12 +334,11 @@ if compute_quant and not quant_loaded:
 
 if postprocess_quant:
 
-    print(quantities_dict.keys())
-    exit()
     
     # remove artefacts due to proximity to double eigenvalues at the transition from real to complex
     # by taking the value of the nearest neighbor for those mu, sigma values
     # Todo: adapt for new quantity computation
+    print(quantities_dict.keys())
     quantities_postprocess(quantities_dict, 
                            quant_names=['lambda_1', 'lambda_2',
                                         'f', 'psi_r_1', 'psi_r_2',

@@ -766,6 +766,7 @@ class SpectralSolver(object):
             root = h5file.root
             
             for q in quantities:
+                print(q)
                 quantities_dict[q] = h5file.get_node(root, q).read()            
                        
             if load_params:
