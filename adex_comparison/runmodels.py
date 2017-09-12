@@ -49,7 +49,7 @@ params = params.get_params()
 # run simulation of uncoupled (rec=False) or recurrently coupled simulation (rec=True)
 rec = False
 
-params['runtime'] = 3000.
+params['runtime'] = 300.
 # number of neurons
 params['N_total'] = 5000 #50000
 # time steps for models
@@ -107,9 +107,9 @@ input_mean = 'OU'
 # filter input mean (necessary for spectral_2m model)
 filter_mean = True
 
-input_std = 'const'
+# input_std = 'const'
 # input_std = 'step'
-# input_std = 'OU'
+input_std = 'OU'
 # input_std = 'ramp'
 filter_std = True
 
@@ -127,7 +127,7 @@ params['t_ext'] = t_ext
 
 # mu_ext variants
 if input_mean == 'const':
-    mu_ext = np.ones(steps+1) * 0.9
+    mu_ext = np.ones(steps+1) * 2.
 
 # mu = OU process, sigma = const
 elif input_mean == 'OU':
@@ -195,9 +195,9 @@ elif input_std == 'step':
 # mu = const, sigma = OU process
 elif input_std == 'OU':
     params['ou_X0'] =  0. #only relevant if params['ou_stationary'] = False
-    params['ou_mean']  = 2.0
-    params['ou_sigma'] = .2
-    params['ou_tau']   = 1.
+    params['ou_mean']  = 2.10
+    params['ou_sigma'] = .05
+    params['ou_tau']   = 50.
     sigma_ext = generate_OUinput(params)
 
 elif input_std == 'ramp':

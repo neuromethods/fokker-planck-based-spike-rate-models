@@ -341,8 +341,8 @@ if postprocess_quant:
     print(quantities_dict.keys())
     quantities_postprocess(quantities_dict, 
                            quant_names=['lambda_1', 'lambda_2',
-                                        'f', 'psi_r_1', 'psi_r_2',
-                                        'c_mu', 'c_sigma_1', 'c_sigma_2'],
+                                        'f', 'psi_r', 'psi_r',
+                                        'c_mu', 'c_sigma', 'c_sigma'],
                             minsigma_interp=0.5, maxsigma_interp=5., maxmu_interp=0.52, 
                             tolerance_conjugation=params['tolerance_conjugation'])
     

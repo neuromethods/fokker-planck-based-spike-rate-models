@@ -1680,6 +1680,8 @@ def error(*s):
 # usage:
 # ALL quantities should be given but hardly asserted is only the existence of f_* and c_mu_* 
 # that are used to detect numerical artifacts
+
+# this postprossing only "corrects" quantities up to the second eigenvalue
 def quantities_postprocess(quantities, quant_names, 
                            minsigma_interp, maxsigma_interp, maxmu_interp, 
                            tolerance_conjugation=1e-5):
@@ -1691,7 +1693,9 @@ def quantities_postprocess(quantities, quant_names,
     
     assert all((q in quant_names for q in ['f', 'c_mu']))
 
-    # todo: change these to the new ones
+    # the following quantities are only used for
+    # checking where we have potential numerical
+    # problems
     f_1 = quantities['f'][0,:,:]
     c_mu_1 = quantities['c_mu'][0,:,:]
     f_2 = quantities['f'][1,:,:]
@@ -1702,17 +1706,25 @@ def quantities_postprocess(quantities, quant_names,
     
         # compute the mu index i where lambda_1 is complex but for all indicies < i is real
         i_complex = np.where(np.abs(f_cmu[:, j].imag) > tolerance_conjugation)[0]
+        # print(i_complex)
         for i in i_complex:
             print('(potential double eigenvalue): fixing quantities (wrong imag part for sigma[{}]={} at mu[{}]={}'
-                .format(j, sigma[j], i, mu[i])) 
-                
+                .format(j, sigma[j], i, mu[i]))
+            # for quant names
             for q in quant_names:
+                # loop over eigenvalues one and two
+                for n in range(2):
+                    # distinguish between
+                    print(i, j, n)
                     quant = quantities[q]
-                    q_left = quant[i-1, j]
-#                    q_right = quant[i+1, j]                                                      
-                    quant[i, j] = q_left
-#                    quant[i, j] = (q_left+q_right)/2.
-                    
+                    if quant.ndim == 2:
+                        q_left = quant[i-1, j]
+#                       q_right = quant[i+1, j]
+                        quant[i, j] = q_left
+#                       quant[i, j] = (q_left+q_right)/2.
+                    else:
+                        q_left = quant[n, i-1, j]
+                        quant[n, i, j] = q_left
         # interpolate spikes for sigma up to maxsigma_interp
         if minsigma_interp <= sigma[j] and sigma[j] <= maxsigma_interp:
             re = f_cmu[:, j].real
@@ -1722,9 +1734,15 @@ def quantities_postprocess(quantities, quant_names,
                         .format(j, sigma[j], i, mu[i])) 
                         
                     for q in quant_names:
-                        quant = quantities[q]
-                        q_left = quant[i-1, j]
-                        quant[i, j] = q_left
+                        # only loop over first two eigenvalues
+                        for n in range(2):
+                            quant = quantities[q]
+                            if quant.ndim == 2:
+                                q_left = quant[i-1, j]
+                                quant[i, j] = q_left
+                            else:
+                                q_left = quant[n, i-1, j]
+                                quant[n, i, j] = q_left
 
     
     
