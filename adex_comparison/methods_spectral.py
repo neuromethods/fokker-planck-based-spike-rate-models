@@ -1785,7 +1785,70 @@ def quantities_postprocess(quantities, quant_names,
 #            print('<psi_2|phi_2> = {}'.format(inner_prod(psi_2, phi_2, V_vec)))
 #            print('<psi_1|phi_2> = {}'.format(inner_prod(psi_1, phi_2, V_vec)))
 #            print('<psi_2|phi_1> = {}'.format(inner_prod(psi_2, phi_1, V_vec)))
-#    
+#
+
+
+
+
+
+
+
+
+# similar to postprocess spectrum only for more than just two eigenvalues
+def eigenvalue_sorting(lambda_all, mu, sigma, nrOfEigenvalues):
+    # take first two pairs of complex conjugated eigenvalues
+    lambda_sorted = np.zeros((nrOfEigenvalues, 461, 46)) + 0j
+    for mu_val in mu:
+        m = np.argmin(np.abs(mu-mu_val))
+        for sigma_val in sigma:
+            s = np.argmin(np.abs(sigma - sigma_val))
+            # reverse the sorting and take eigenvalues up to nrOfEigenvalues
+            lambda_sorted[:, m, s] = np.sort(lambda_all[:, m, s])[::-1][:nrOfEigenvalues]
+
+    return lambda_sorted
+
+# get the diffusive AND regular eigenvalues
+def eigenvalues_reg_diff(lambda_all, mu, sigma):
+    # get the diffusive eigenmodes
+    mu_range = mu.shape[0]
+    sigma_range = sigma.shape[0]
+    # array for saving the sorted (diffusive and regular) eigenmodes
+    eigenvalues_sorted_reg = np.zeros((10, 461, 46))
+    eigenvalues_sorted_diff = np.zeros((10, 461, 46))
+    # loop over all mu/sigma pairs
+    for m in xrange(mu_range):
+        for s in xrange(sigma_range):
+            # get all regular eigenmodes. Those are eigenmodes, that
+            # come in complex conjugated pairs.
+            regular_modes = []  # in the end we will have len(regular_modes)+len(diffusive_modes)=10
+            diffusive_modes = []
+            for n in range(10):
+                eigval_n_mu_sigma = lambda_all[n, m, s]
+                # loop over the list of eigenvalues for that mu/sigma combination
+                # and sort them into two different categories (diffusive/regular)
+                # according to their features.
+
+                # if eigval merges later -> regular
+                if eigval_n_mu_sigma.imag <= 10e-7 and lambda_all[n, -1, s].imag > 10e-7:
+                    regular_modes.append(eigval_n_mu_sigma)
+                # already copmlex
+                elif eigval_n_mu_sigma.imag > 10e-7:
+                    regular_modes.append(eigval_n_mu_sigma)
+                # diffusive
+                else:
+                    diffusive_modes.append(eigval_n_mu_sigma)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 # plotting stuff (was in own file plotting.py before)
