@@ -391,31 +391,45 @@ if obtain_fluxlb:
 
 
 
-## debugging!
+# store the first 2 regular & 1 diffusive eigenmodes
+lambda_reg,lambda_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
+lambda_1x2regular_1x1diffusive = np.zeros((3, 461, 46))+0j
+# save the first two regular eigenmodes and the first diffusive eigenmode
+lambda_1x2regular_1x1diffusive[:2, :, :] = lambda_reg[:2, :, :]
+lambda_1x2regular_1x1diffusive[2, :, :] = lambda_diff[0, :, :]
 
-eigenvalues_reg, eigenvalues_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
 
+
+
+quantities_dict['lambda_1x2regular_1x1diffusive'] = lambda_1x2regular_1x1diffusive
+quantities_dict['lambda_diffusive'] = lambda_diff
+quantities_dict['lambda_diffusive'] = lambda_diff
+quantities_dict['lambda_regular'] = lambda_reg
+specsolv.save_quantities(folder+'/'+filename, quantities_dict)
 
 #########
 #   lambda_sorted=eigenvalue_sorting(lambda_all, mu, sigma, 10)
 #   ####################
 # check again the quantities
-sigma_val = 3.
-sigma_idx = 20# np.argmin(np.abs(sigma-sigma_val))
-nr_e = 3
-# for n in range(10):
-for n in range(10):
-    plt.plot(lambda_all[n, :, sigma_idx])
+
+for sigma_idx in range(46):
+    fig = plt.figure()
+    # sigma_idx = -1# np.argmin(np.abs(sigma-sigma_val))
+    # for n in range(10):
+    for n in range(10):
+        plt.plot(lambda_all[n, :, sigma_idx])
 
 
-plt.plot(eigenvalues_reg[0, :, sigma_idx], '+')
-plt.plot(eigenvalues_reg[1, :, sigma_idx], '+')
-plt.plot(eigenvalues_reg[2, :, sigma_idx], '+')
-plt.plot(eigenvalues_reg[3, :, sigma_idx], '+')
-plt.plot(eigenvalues_diff[0, :, sigma_idx], 'o')
-plt.plot(eigenvalues_diff[1, :, sigma_idx], 'o')
-# plt.plot(eigenvalues_reg[2, :, sigma_idx], '+')
-# plt.plot(eigenvalues_reg[3, :, sigma_idx], '+')
+    plt.plot(lambda_1x2regular_1x1diffusive[0, :, sigma_idx].imag, '+')
+    plt.plot(lambda_1x2regular_1x1diffusive[1, :, sigma_idx].imag, '+')
+    # plt.plot(lambda_1x2regular_1x1diffusive[2, :, sigma_idx], '+')
+    # plt.plot(lambda_1x2regular_1x1diffusive[3, :, sigma_idx], '+')
+    plt.plot(lambda_1x2regular_1x1diffusive[2, :, sigma_idx], 'o')
+    # plt.plot(lambda_1x2regular_1x1diffusive[1, :, sigma_idx], 'o')
+    # plt.plot(eigenvalues_reg[2, :, sigma_idx], '+')
+    # plt.plot(eigenvalues_reg[3, :, sigma_idx], '+')
+
+
 
 
 #
