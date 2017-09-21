@@ -100,7 +100,7 @@ plot_paper_quantities = False            # the visualization used for Figure 7 o
 plot_full_spectrum_sigma = False        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
                                         # note that this is also contained in plot_paper_quantities
                                         
-plot_full_spectrum_eigvals = True      # the spectrum (mu, sigma) visualized with eigenvalue index running over subplots
+plot_full_spectrum_eigvals = False      # the spectrum (mu, sigma) visualized with eigenvalue index running over subplots
 
 plot_quantities = [] # ['eigvals', 'real', 'composed'] # which quantitie types to plot
                                                   # additionally, choose no or any from 
@@ -393,29 +393,42 @@ if obtain_fluxlb:
 
 ## debugging!
 
-eigenvalues_reg_diff(lambda_all, mu, sigma)
+eigenvalues_reg, eigenvalues_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
+
 
 #########
 #   lambda_sorted=eigenvalue_sorting(lambda_all, mu, sigma, 10)
 #   ####################
-#   # check again the quantities
-# sigma_val = 3.
-# sigma_idx = np.argmin(np.abs(sigma-sigma_val))
-# nr_e = 3
-# # for n in range(10):
+# check again the quantities
+sigma_val = 3.
+sigma_idx = 20# np.argmin(np.abs(sigma-sigma_val))
+nr_e = 3
 # for n in range(10):
-#     plt.plot(lambda_all[n, :, sigma_idx])
-# #
-# #   # plt.figure()
-# #   # plt.plot(quantities_dict['lambda_1'][:, sigma_idx], label = 'lambda_1')
-# #   # plt.plot(quantities_dict['lambda_2'][:, sigma_idx], label = 'lambda_2')
-# #   plt.plot(lambda_sorted[0, :, sigma_idx], color='b', lw=5, label = '1')
-# #   plt.plot(lambda_sorted[1, :, sigma_idx], color = 'y', lw = 4, label='2')
-# #   plt.plot(lambda_sorted[2, :, sigma_idx], color = 'r', lw = 3, label = '3')
-# #   # plt.plot(lambda_sorted[3, :, sigma_idx], color = 'g', lw = 2, label='4')
-# #
-# #   plt.legend()
-# plt.show()
+for n in range(10):
+    plt.plot(lambda_all[n, :, sigma_idx])
+
+
+plt.plot(eigenvalues_reg[0, :, sigma_idx], '+')
+plt.plot(eigenvalues_reg[1, :, sigma_idx], '+')
+plt.plot(eigenvalues_reg[2, :, sigma_idx], '+')
+plt.plot(eigenvalues_reg[3, :, sigma_idx], '+')
+plt.plot(eigenvalues_diff[0, :, sigma_idx], 'o')
+plt.plot(eigenvalues_diff[1, :, sigma_idx], 'o')
+# plt.plot(eigenvalues_reg[2, :, sigma_idx], '+')
+# plt.plot(eigenvalues_reg[3, :, sigma_idx], '+')
+
+
+#
+#   # plt.figure()
+#   # plt.plot(quantities_dict['lambda_1'][:, sigma_idx], label = 'lambda_1')
+#   # plt.plot(quantities_dict['lambda_2'][:, sigma_idx], label = 'lambda_2')
+#   plt.plot(lambda_sorted[0, :, sigma_idx], color='b', lw=5, label = '1')
+#   plt.plot(lambda_sorted[1, :, sigma_idx], color = 'y', lw = 4, label='2')
+#   plt.plot(lambda_sorted[2, :, sigma_idx], color = 'r', lw = 3, label = '3')
+#   # plt.plot(lambda_sorted[3, :, sigma_idx], color = 'g', lw = 2, label='4')
+#
+#   plt.legend()
+plt.show()
 
 
 # PLOTTING

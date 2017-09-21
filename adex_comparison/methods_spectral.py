@@ -1810,18 +1810,22 @@ def eigenvalue_sorting(lambda_all, mu, sigma, nrOfEigenvalues):
 # get the diffusive AND regular eigenvalues
 def eigenvalues_reg_diff(lambda_all, mu, sigma):
     # get the diffusive eigenmodes
+    same_eigen_val_tol = 10e-5
     mu_range = mu.shape[0]
     sigma_range = sigma.shape[0]
     # array for saving the sorted (diffusive and regular) eigenmodes
-    eigenvalues_sorted_reg = np.zeros((10, 461, 46))
-    eigenvalues_sorted_diff = np.zeros((10, 461, 46))
+    eigenvalues_sorted_reg = np.zeros((20, 461, 46)) + 0j
+    eigenvalues_sorted_diff = np.zeros((20, 461, 46)) + 0j
+    eigenvalues_sorted_all = np.zeros((20, 461, 46)) + 0j
     # loop over all mu/sigma pairs
-    for m in xrange(mu_range):
+    for m in xrange(mu_range): #xrange(mu_range):
         for s in xrange(sigma_range):
             # get all regular eigenmodes. Those are eigenmodes, that
             # come in complex conjugated pairs.
             regular_modes = []  # in the end we will have len(regular_modes)+len(diffusive_modes)=10
             diffusive_modes = []
+            # todo: change this later to not be hardcoded!
+            # print(lambda_all[:, m, s])
             for n in range(10):
                 eigval_n_mu_sigma = lambda_all[n, m, s]
                 # loop over the list of eigenvalues for that mu/sigma combination
@@ -1829,14 +1833,59 @@ def eigenvalues_reg_diff(lambda_all, mu, sigma):
                 # according to their features.
 
                 # if eigval merges later -> regular
-                if eigval_n_mu_sigma.imag <= 10e-7 and lambda_all[n, -1, s].imag > 10e-7:
+                if eigval_n_mu_sigma.imag > 10e-7 or np.abs(lambda_all[n, -1, s].imag) > 10e-7:
                     regular_modes.append(eigval_n_mu_sigma)
+                    # print(eigval_n_mu_sigma)
+                    # print('regular')
                 # already copmlex
-                elif eigval_n_mu_sigma.imag > 10e-7:
-                    regular_modes.append(eigval_n_mu_sigma)
+                # elif eigval_n_mu_sigma.imag > 10e-7:
+                #     regular_modes.append(eigval_n_mu_sigma)
                 # diffusive
                 else:
+                    # print(eigval_n_mu_sigma)
+                    # print('diffusive')
                     diffusive_modes.append(eigval_n_mu_sigma)
+
+
+            # now we have the two lists of eigenvalues
+            # sort the two lists and reverse them
+            diffusive_modes.sort()
+            diffusive_modes.reverse()
+            len_diff = len(diffusive_modes)
+
+            regular_modes.sort()
+            regular_modes.reverse()
+            len_reg = len(regular_modes)
+            # clean up the regular_modes list
+            # maybe useless ...
+            # which indices will be deleted
+            del_idx = []
+            for n in range(len_reg-1):
+                if regular_modes[n].imag > 10e-7 and (np.abs(regular_modes[n].real-regular_modes[n+1].real) < 10e-8):
+                    del_idx.append(n+1)
+            regular_modes = [v for i,v in enumerate(regular_modes) if i not in del_idx]
+
+            # now put the regular eigenvalues in the ordered lamnda_sorted array
+            # better with a while loop
+            n_reg_modes = 0
+            n_sorted = 0
+            while n_reg_modes < len(regular_modes):
+                if regular_modes[n_reg_modes].imag > 10e-7:
+                    # ensure that positive imaginary part is always first
+                    eigenvalues_sorted_reg[n_sorted, m, s] = regular_modes[n_reg_modes]
+                    eigenvalues_sorted_reg[n_sorted+1, m, s] = regular_modes[n_reg_modes].conjugate()
+                    # update indices
+                    n_reg_modes += 1
+                    n_sorted += 2
+                # is not complex but merges for higher mu vals
+                else:
+                    eigenvalues_sorted_reg[n_sorted, m, s] = regular_modes[n_reg_modes]
+                    n_reg_modes += 1
+                    n_sorted += 1
+            for n_diff in range(len_diff):
+                eigenvalues_sorted_diff[n_diff, m, s] = diffusive_modes[n_diff]
+    return eigenvalues_sorted_reg, eigenvalues_sorted_diff
+
 
 
 
