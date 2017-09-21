@@ -1865,7 +1865,7 @@ def eigenvalues_reg_diff(lambda_all, mu, sigma):
                     del_idx.append(n+1)
             regular_modes = [v for i,v in enumerate(regular_modes) if i not in del_idx]
 
-            # now put the regular eigenvalues in the ordered lamnda_sorted array
+            # fill the regular eigenvalues in the ordered lamnda_sorted array
             # better with a while loop
             n_reg_modes = 0
             n_sorted = 0
@@ -1882,8 +1882,11 @@ def eigenvalues_reg_diff(lambda_all, mu, sigma):
                     eigenvalues_sorted_reg[n_sorted, m, s] = regular_modes[n_reg_modes]
                     n_reg_modes += 1
                     n_sorted += 1
+            # fill diffusive eigenmodes
             for n_diff in range(len_diff):
                 eigenvalues_sorted_diff[n_diff, m, s] = diffusive_modes[n_diff]
+
+
     return eigenvalues_sorted_reg, eigenvalues_sorted_diff
 
 

@@ -399,6 +399,19 @@ lambda_1x2regular_1x1diffusive[:2, :, :] = lambda_reg[:2, :, :]
 lambda_1x2regular_1x1diffusive[2, :, :] = lambda_diff[0, :, :]
 
 
+# take the values from eigenvalue_reg & eigenvalue_diff
+eigenvalues_sorted = np.zeros((6, 461, 46))
+# first four regular eigenvalues
+eigenvalues_sorted[:4, :, :] = eigenvalues_reg[:4, :, :]
+eigenvalues_sorted[4, :, :] = eigenvalues_diff[0, :,:]
+eigenvalues_sorted[5, :, :] = eigenvalues_diff[1, :,:]
+
+#
+#    h5file_anim = tables.open_file('eigenvalues_sorted_animation.h5', mode='w')
+#
+#    h5file_anim.create_array('/','eigs', eigenvalues_sorted)
+#    h5file_anim.close()
+#    # exit()
 
 
 quantities_dict['lambda_1x2regular_1x1diffusive'] = lambda_1x2regular_1x1diffusive
@@ -411,15 +424,22 @@ specsolv.save_quantities(folder+'/'+filename, quantities_dict)
 #   lambda_sorted=eigenvalue_sorting(lambda_all, mu, sigma, 10)
 #   ####################
 # check again the quantities
+<<<<<<< HEAD
 
 for sigma_idx in range(46):
     fig = plt.figure()
     # sigma_idx = -1# np.argmin(np.abs(sigma-sigma_val))
+=======
+sigma_val = 3.
+for sigma_idx in range(46):
+    fig = plt.figure()
+>>>>>>> ebe9d42f3da0a919be8033ba5527f048c57003c4
     # for n in range(10):
     for n in range(10):
         plt.plot(lambda_all[n, :, sigma_idx])
 
 
+<<<<<<< HEAD
     plt.plot(lambda_1x2regular_1x1diffusive[0, :, sigma_idx].imag, '+')
     plt.plot(lambda_1x2regular_1x1diffusive[1, :, sigma_idx].imag, '+')
     # plt.plot(lambda_1x2regular_1x1diffusive[2, :, sigma_idx], '+')
@@ -430,18 +450,24 @@ for sigma_idx in range(46):
     # plt.plot(eigenvalues_reg[3, :, sigma_idx], '+')
 
 
+=======
+    # regular eigenmodes
+    plt.plot(eigenvalues_sorted[0, :, sigma_idx], '+', label = 'reg 1')
+    plt.plot(eigenvalues_sorted[1, :, sigma_idx], '+', label = 'reg 2')
+    # plt.plot(eigenvalues_sorted[2, :, sigma_idx], '+', label = 'reg 3')
+    # plt.plot(eigenvalues_sorted[3, :, sigma_idx], '+', label = 'reg 4')
+    plt.plot(eigenvalues_sorted[4, :, sigma_idx], '+', label = 'diff 1')
+>>>>>>> ebe9d42f3da0a919be8033ba5527f048c57003c4
+
+    # save the eigenvalues sorted file
+
+# diffusive eigenmodes
+#  plt.plot(eigenvalues_diff[0, :, sigma_idx], 'o', label = 'diff 1')
+#  plt.plot(eigenvalues_diff[1, :, sigma_idx], 'o', label = 'diff 2')
 
 
-#
-#   # plt.figure()
-#   # plt.plot(quantities_dict['lambda_1'][:, sigma_idx], label = 'lambda_1')
-#   # plt.plot(quantities_dict['lambda_2'][:, sigma_idx], label = 'lambda_2')
-#   plt.plot(lambda_sorted[0, :, sigma_idx], color='b', lw=5, label = '1')
-#   plt.plot(lambda_sorted[1, :, sigma_idx], color = 'y', lw = 4, label='2')
-#   plt.plot(lambda_sorted[2, :, sigma_idx], color = 'r', lw = 3, label = '3')
-#   # plt.plot(lambda_sorted[3, :, sigma_idx], color = 'g', lw = 2, label='4')
-#
-#   plt.legend()
+
+    plt.legend()
 plt.show()
 
 
