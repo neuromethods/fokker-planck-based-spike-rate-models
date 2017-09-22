@@ -123,13 +123,16 @@ def compute_eigenvalue_curve_given_sigma(arg_tuple):
 
 def  compute_quantities_given_sigma(arg_tuple):
     # params, quant_names, lambda_1, lambda_2, mu_arr, sigma_arr, j = arg_tuple
-    params, quant_names, lambda_all, lambda_1, lambda_2, N_eigvals, mu_arr, sigma_arr, j = arg_tuple
+    params, quant_names, lambda_reg_diff, lambda_1, lambda_2, N_eigvals, mu_arr, sigma_arr, j = arg_tuple
 
-    assert N_eigvals <= lambda_all.shape[0]
+    assert N_eigvals <= lambda_reg_diff.shape[0]
     N_mu = mu_arr.shape[0]
     sigma_j = sigma_arr[j]
     dmu = params['dmu_couplingterms']
     dsigma = params['dsigma_couplingterms']
+    # for debugging purpuses
+    use_lambda_reg_diff = True
+    lambda_12 = [lambda_1, lambda_2]
     
     quant_j = {}
 
@@ -349,7 +352,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                         (mu_i+dmu, sigma_j):    None,
                         (mu_i-dmu, sigma_j):    None,
                         (mu_i, sigma_j+dsigma): None,
-                        (mu_i, sigma_j-dsigma): None} for _ in range(2)]
+                        (mu_i, sigma_j-dsigma): None} for _ in range(N_eigvals)]
 
 
         phi_N_cache = [None]*N_eigvals
@@ -417,13 +420,19 @@ def  compute_quantities_given_sigma(arg_tuple):
             if q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                 for n in xrange(N_eigvals):
                     # get the eigenvalue n for the respective mu, sigma
-                    # this is still important to get the correct quantities
-                    if n == 0:
-                        lambda_n_ij = lambda_1[i, j]
-                    elif n == 1:
-                        lambda_n_ij = lambda_2[i, j]
+
+                    # use new ordering currently in development
+                    if use_lambda_reg_diff:
+                        lambda_n_ij = lambda_reg_diff[n, i, j]
+                    # use lambda 1 and 2
                     else:
-                        print('only implemented eigenvalues 1 and 2')
+                        lambda_n_ij = lambda_12[n][i, j]
+                        # if n == 0:
+                        #     lambda_n_ij = lambda_1[i, j]
+                        # elif n == 1:
+                        #     lambda_n_ij = lambda_2[i, j]
+                        # else:
+                        #     print('only implemented eigenvalues 1 and 2')
 
                     # lambda_n_ij = lambda_all[n, i, j]
                     # vector of f's
@@ -493,11 +502,17 @@ def  compute_quantities_given_sigma(arg_tuple):
                         c_sigma_n = inner_prod(dpsi_n_dsigma, phi_0_noref, V_arr)
                         #save in quant_j-dict
                         quant_j[q][n][i] = c_sigma_n
+
             if q in ['C_mu', 'C_sigma']:
                 for k in range(N_eigvals):
                     for l in range(N_eigvals):
-                        lambda_k_ij = lambda_all[k, i, j]
-                        lambda_l_ij = lambda_all[l, i, j]
+                        if use_lambda_reg_diff:
+                            lambda_k_ij = lambda_reg_diff[k, i, j]
+                            lambda_l_ij = lambda_reg_diff[l, i, j]
+                        else:
+                            lambda_k_ij = lambda_12[k][i, j]
+                            lambda_l_ij = lambda_12[l][i, j]
+
                         if q == 'C_mu':
                             lambda_k_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_k_ij)
                             V_arr, psi_k_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_k_plus_mu, k)
@@ -675,7 +690,11 @@ class SpectralSolver(object):
         # lambda_1 & lambda_2 --> lambda_all
         lambda_1 = quantities_dict['lambda_1']
         lambda_2 = quantities_dict['lambda_2']
-        lambda_all = quantities_dict['lambda_all']
+        # lambda_all is not really needed here
+        # lambda_all = quantities_dict['lambda_all']
+        # this is the new ordered data structure
+        lambda_reg_diff = quantities_dict['lambda_1x2regular_1x1diffusive']
+
 
 
         mu_arr = quantities_dict['mu']
@@ -701,7 +720,8 @@ class SpectralSolver(object):
             elif q in ['C_mu', 'C_sigma']:
                 quantities_dict[q] = np.zeros((N_eigvals, N_eigvals, N_mu, N_sigma)) + 0j # complex dtype
 
-        arg_tuple_list = [(self.params, quant_names, lambda_all, lambda_1, lambda_2, N_eigvals, mu_arr, sigma_arr, j)
+        arg_tuple_list = [(self.params, quant_names, lambda_reg_diff, lambda_1, lambda_2, N_eigvals,
+                           mu_arr, sigma_arr, j)
                           for j in range(N_sigma)]
         
         comp_total_start = time.time()

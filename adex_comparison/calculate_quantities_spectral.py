@@ -18,7 +18,7 @@ from methods_spectral import SpectralSolver, spectrum_enforce_complex_conjugatio
                                           plot_raw_spectrum_sigma, plot_raw_spectrum_eigvals, \
                                           plot_quantities_eigvals, plot_quantities_real, \
                                           plot_quantities_complex, plot_quantities_composed, \
-                                            eigenvalue_sorting, eigenvalues_reg_diff
+                                          eigenvalues_reg_diff
 from params import get_params
 import numpy as np
 import matplotlib.pyplot as plt
@@ -85,8 +85,8 @@ compute_spec = False # computes if not loaded
 postprocess_spectrum = False # enforce complex conjugation
 
 save_quant = True # save (and overwrite file) if quantity computation or postprocessing happened
-load_quant = True # loading quantities from file skips quantity calculation unless loading fails
-compute_quant = False # whether to compute quantities at all
+load_quant = False # loading quantities from file skips quantity calculation unless loading fails
+compute_quant = True # whether to compute quantities at all
 postprocess_quant = True # remove numerical artefacts from quantities
 obtain_fluxlb = True # whether to load or compute if not in file lambda -> q(V_lb) for smallest mu
 
@@ -285,6 +285,25 @@ if load_quant:
     print(quantities_dict.keys())
     quant_loaded = True
 
+
+# add lambda_1x2regular_1x1diffusive to the quantities in the dictionary
+eigenvalue_sorting = True
+if eigenvalue_sorting:
+    # store the first 2 regular & 1 diffusive eigenmodes
+    lambda_reg,lambda_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
+    lambda_1x2regular_1x1diffusive = np.zeros((3, 461, 46))+0j
+    # save the first two regular eigenmodes and the first diffusive eigenmode
+    lambda_1x2regular_1x1diffusive[:2, :, :] = lambda_reg[:2, :, :]
+    lambda_1x2regular_1x1diffusive[2, :, :] = lambda_diff[0, :, :]
+
+    quantities_dict['lambda_1x2regular_1x1diffusive'] = lambda_1x2regular_1x1diffusive
+    quantities_dict['lambda_diffusive'] = lambda_diff
+    quantities_dict['lambda_diffusive'] = lambda_diff
+    quantities_dict['lambda_regular'] = lambda_reg
+    specsolv.save_quantities(folder+'/'+filename, quantities_dict)
+
+
+
 quant_computed = False
 if compute_quant and not quant_loaded:
 
@@ -298,7 +317,8 @@ if compute_quant and not quant_loaded:
     # do the actual quantity computation of the mu sigma rectangle via the following method call
     # restrict mu, sigma
 
-    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)# [:8]
+    specsolv.params['use_lambda_reg_diff'] = False
+    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)[:8]
     quantities_dict['mu'] = np.linspace(-1.5, 10., N_mu)
 
 
@@ -307,16 +327,16 @@ if compute_quant and not quant_loaded:
     specsolv.compute_quantities_rect(quantities_dict,
                                         # comment out for default
                                         # computation of all quants
-                                        quant_names = ['f',
-                                                       'psi_r',
-                                                       'c_mu',
-                                                       'c_sigma',
-                                                       'r_inf',
+                                        quant_names = [# 'f',
+                                                       # 'psi_r',
+                                                       # 'c_mu',
+                                                       # 'c_sigma',
+                                                       # 'r_inf',
                                                        'C_mu',
-                                                       'C_sigma',
-                                                       'V_mean_inf'
+                                                       # 'C_sigma',
+                                                       # 'V_mean_inf'
                                                        ],
-                                        N_eigvals=2)
+                                        N_eigvals=3, N_procs=1)
 
 
 
@@ -388,87 +408,6 @@ if obtain_fluxlb:
         specsolv.save_quantities(folder+'/'+filename, quantities_dict)
         
         print('saving obtained fluxes at lower bound after computing them')
-
-
-
-# store the first 2 regular & 1 diffusive eigenmodes
-lambda_reg,lambda_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
-lambda_1x2regular_1x1diffusive = np.zeros((3, 461, 46))+0j
-# save the first two regular eigenmodes and the first diffusive eigenmode
-lambda_1x2regular_1x1diffusive[:2, :, :] = lambda_reg[:2, :, :]
-lambda_1x2regular_1x1diffusive[2, :, :] = lambda_diff[0, :, :]
-
-
-# take the values from eigenvalue_reg & eigenvalue_diff
-eigenvalues_sorted = np.zeros((6, 461, 46))
-# first four regular eigenvalues
-eigenvalues_sorted[:4, :, :] = eigenvalues_reg[:4, :, :]
-eigenvalues_sorted[4, :, :] = eigenvalues_diff[0, :,:]
-eigenvalues_sorted[5, :, :] = eigenvalues_diff[1, :,:]
-
-#
-#    h5file_anim = tables.open_file('eigenvalues_sorted_animation.h5', mode='w')
-#
-#    h5file_anim.create_array('/','eigs', eigenvalues_sorted)
-#    h5file_anim.close()
-#    # exit()
-
-
-quantities_dict['lambda_1x2regular_1x1diffusive'] = lambda_1x2regular_1x1diffusive
-quantities_dict['lambda_diffusive'] = lambda_diff
-quantities_dict['lambda_diffusive'] = lambda_diff
-quantities_dict['lambda_regular'] = lambda_reg
-specsolv.save_quantities(folder+'/'+filename, quantities_dict)
-
-#########
-#   lambda_sorted=eigenvalue_sorting(lambda_all, mu, sigma, 10)
-#   ####################
-# check again the quantities
-<<<<<<< HEAD
-
-for sigma_idx in range(46):
-    fig = plt.figure()
-    # sigma_idx = -1# np.argmin(np.abs(sigma-sigma_val))
-=======
-sigma_val = 3.
-for sigma_idx in range(46):
-    fig = plt.figure()
->>>>>>> ebe9d42f3da0a919be8033ba5527f048c57003c4
-    # for n in range(10):
-    for n in range(10):
-        plt.plot(lambda_all[n, :, sigma_idx])
-
-
-<<<<<<< HEAD
-    plt.plot(lambda_1x2regular_1x1diffusive[0, :, sigma_idx].imag, '+')
-    plt.plot(lambda_1x2regular_1x1diffusive[1, :, sigma_idx].imag, '+')
-    # plt.plot(lambda_1x2regular_1x1diffusive[2, :, sigma_idx], '+')
-    # plt.plot(lambda_1x2regular_1x1diffusive[3, :, sigma_idx], '+')
-    plt.plot(lambda_1x2regular_1x1diffusive[2, :, sigma_idx], 'o')
-    # plt.plot(lambda_1x2regular_1x1diffusive[1, :, sigma_idx], 'o')
-    # plt.plot(eigenvalues_reg[2, :, sigma_idx], '+')
-    # plt.plot(eigenvalues_reg[3, :, sigma_idx], '+')
-
-
-=======
-    # regular eigenmodes
-    plt.plot(eigenvalues_sorted[0, :, sigma_idx], '+', label = 'reg 1')
-    plt.plot(eigenvalues_sorted[1, :, sigma_idx], '+', label = 'reg 2')
-    # plt.plot(eigenvalues_sorted[2, :, sigma_idx], '+', label = 'reg 3')
-    # plt.plot(eigenvalues_sorted[3, :, sigma_idx], '+', label = 'reg 4')
-    plt.plot(eigenvalues_sorted[4, :, sigma_idx], '+', label = 'diff 1')
->>>>>>> ebe9d42f3da0a919be8033ba5527f048c57003c4
-
-    # save the eigenvalues sorted file
-
-# diffusive eigenmodes
-#  plt.plot(eigenvalues_diff[0, :, sigma_idx], 'o', label = 'diff 1')
-#  plt.plot(eigenvalues_diff[1, :, sigma_idx], 'o', label = 'diff 2')
-
-
-
-    plt.legend()
-plt.show()
 
 
 # PLOTTING
