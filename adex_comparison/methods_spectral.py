@@ -131,7 +131,7 @@ def  compute_quantities_given_sigma(arg_tuple):
     dmu = params['dmu_couplingterms']
     dsigma = params['dsigma_couplingterms']
     # for debugging purpuses
-    use_lambda_reg_diff = True
+    use_lambda_reg_diff = False
     lambda_12 = [lambda_1, lambda_2]
     
     quant_j = {}
@@ -506,12 +506,19 @@ def  compute_quantities_given_sigma(arg_tuple):
             if q in ['C_mu', 'C_sigma']:
                 for k in range(N_eigvals):
                     for l in range(N_eigvals):
-                        if use_lambda_reg_diff:
-                            lambda_k_ij = lambda_reg_diff[k, i, j]
-                            lambda_l_ij = lambda_reg_diff[l, i, j]
-                        else:
-                            lambda_k_ij = lambda_12[k][i, j]
-                            lambda_l_ij = lambda_12[l][i, j]
+                        # print(lambda_reg_diff[k, i, j]==lambda_12[k][i, j])
+                        # print(lambda_reg_diff[l, i, j]==lambda_12[l][i, j])
+                        # if use_lambda_reg_diff:
+                        lambda_k_ij = lambda_reg_diff[k, i, j]
+                        lambda_l_ij = lambda_reg_diff[l, i, j]
+                        if lambda_k_ij == 0.:
+                            lambda_k_ij = -3. + 0j
+                        if lambda_l_ij == 0.:
+                            lambda_l_ij = -3. + 0j
+                        # else:
+                        # lambda_k_ij = lambda_12[k][i, j]
+                        # lambda_l_ij = lambda_12[l][i, j]
+
 
                         if q == 'C_mu':
                             lambda_k_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_k_ij)

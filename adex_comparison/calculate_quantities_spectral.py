@@ -40,7 +40,7 @@ params = get_params()
 # file containing the full spectrum (all eigenvalues), 
 # the two dominant eigenvalues as well as all further quantities for 
 # a rectangle of input parameter values for the mean and std dev (mu, sigma)
-filename = 'quantities_spectral_elnath.h5'
+filename = 'quantities_spectral_master_new.h5'
 
 folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
 
