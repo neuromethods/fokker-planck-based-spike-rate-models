@@ -422,11 +422,11 @@ def  compute_quantities_given_sigma(arg_tuple):
                     # get the eigenvalue n for the respective mu, sigma
 
                     # use new ordering currently in development
-                    if use_lambda_reg_diff:
-                        lambda_n_ij = lambda_reg_diff[n, i, j]
+                    # if use_lambda_reg_diff:
+                    lambda_n_ij = lambda_reg_diff[n, i, j]
                     # use lambda 1 and 2
-                    else:
-                        lambda_n_ij = lambda_12[n][i, j]
+                    # else:
+                    #     lambda_n_ij = lambda_12[n][i, j]
                         # if n == 0:
                         #     lambda_n_ij = lambda_1[i, j]
                         # elif n == 1:
@@ -511,13 +511,17 @@ def  compute_quantities_given_sigma(arg_tuple):
                         # if use_lambda_reg_diff:
                         lambda_k_ij = lambda_reg_diff[k, i, j]
                         lambda_l_ij = lambda_reg_diff[l, i, j]
+                        # hack to avoid problems with the non-existing diffusive modes
+                        # for very small sigma
                         if lambda_k_ij == 0.:
+                            # pass
                             lambda_k_ij = -3. + 0j
                         if lambda_l_ij == 0.:
+                            # pass
                             lambda_l_ij = -3. + 0j
                         # else:
-                        # lambda_k_ij = lambda_12[k][i, j]
-                        # lambda_l_ij = lambda_12[l][i, j]
+                        lambda_k_ij = lambda_12[k][i, j]
+                        lambda_l_ij = lambda_12[l][i, j]
 
 
                         if q == 'C_mu':
@@ -590,7 +594,7 @@ def spectrum_enforce_complex_conjugation(lambda_all, mu_arr, sigma_arr,
     #and negative part exist; merging = real parts are close and imag part > 0 (right of merge point which is not in grid)
     for j in range(N_sigma):
         for tup in itertools.combinations(range(N_eigvals), 2):
-            diff = lambda_all[tup[0],:,j] - lambda_all[tup[1],:,j]
+            diff = lambda_all[tup[0], : ,j] - lambda_all[tup[1],:,j]
             idx_zero = np.where((np.abs(np.real(diff))<tolerance_conjugation) &
                                 (np.abs(lambda_all[tup[0],:,j].imag) > tolerance_conjugation))[0]
             if len(idx_zero) > merge_dist:
