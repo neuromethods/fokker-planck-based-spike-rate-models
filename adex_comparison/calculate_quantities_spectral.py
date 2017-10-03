@@ -10,7 +10,13 @@
 
 # Please cite the publication which has introduced the solver if you want to use it: 
 #    Augustin, Ladenbauer, Baumann, Obermayer (2017) PLOS Comput Biol
-    
+
+
+
+# # todo: download quantities:
+#  -> currently computing on antares and merope for 2 and 3 eigenvals
+
+
 import sys
 sys.path.insert(1, '..')
 from methods_spectral import SpectralSolver, spectrum_enforce_complex_conjugation, \
@@ -40,7 +46,7 @@ params = get_params()
 # file containing the full spectrum (all eigenvalues), 
 # the two dominant eigenvalues as well as all further quantities for 
 # a rectangle of input parameter values for the mean and std dev (mu, sigma)
-filename = 'quantities_spectral_master_new.h5'
+filename = 'quantities_spectral.h5'
 
 folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
 
@@ -296,12 +302,32 @@ if eigenvalue_sorting:
     lambda_1x2regular_1x1diffusive[:2, :, :] = lambda_reg[:2, :, :]
     lambda_1x2regular_1x1diffusive[2, :, :] = lambda_diff[0, :, :]
 
+    lambda_2_regular_2_diffusive = np.zeros((4, 461, 46)) +0j
+    lambda_2_regular_2_diffusive[:2, :, :] = lambda_reg[:2, :, :]
+    lambda_2_regular_2_diffusive[2, :, :] = lambda_diff[0, :, :]
+    lambda_2_regular_2_diffusive[3, :, :] = lambda_diff[1, :, :]
+
+
+    # plt.plot(lambda_2_regular_2_diffusive[0, :, 0])
+    # plt.plot(lambda_2_regular_2_diffusive[1, :, 0])
+
+
+    # these are the three eigenvalues we use now for the computation
     quantities_dict['lambda_1x2regular_1x1diffusive'] = lambda_1x2regular_1x1diffusive
     quantities_dict['lambda_diffusive'] = lambda_diff
     quantities_dict['lambda_diffusive'] = lambda_diff
     quantities_dict['lambda_regular'] = lambda_reg
+    quantities_dict['lambda_2_regular_2_diffusive'] = lambda_2_regular_2_diffusive
     specsolv.save_quantities(folder+'/'+filename, quantities_dict)
 
+
+    # print(quantities_dict.keys())
+
+    # plt.plot(lambda_2_regular_2_diffusive[0, :,-1])
+    # plt.plot(lambda_2_regular_2_diffusive[1, :,-1])
+    # plt.show()
+
+    # exit()
 
 
 quant_computed = False
@@ -317,8 +343,8 @@ if compute_quant and not quant_loaded:
     # do the actual quantity computation of the mu sigma rectangle via the following method call
     # restrict mu, sigma
 
-    specsolv.params['use_lambda_reg_diff'] = False
-    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)[:8]
+    # specsolv.params['use_lambda_reg_diff'] = False
+    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)
     quantities_dict['mu'] = np.linspace(-1.5, 10., N_mu)
 
 
@@ -327,17 +353,17 @@ if compute_quant and not quant_loaded:
     specsolv.compute_quantities_rect(quantities_dict,
                                         # comment out for default
                                         # computation of all quants
-                                        quant_names = [# 'f',
-                                                       # 'psi_r',
-                                                       # 'c_mu',
-                                                       # 'c_sigma',
-                                                       # 'r_inf',
+                                        quant_names = ['r_inf',
+                                                       'V_mean_inf',
+                                                       'f',
+                                                       'psi_r',
+                                                       'c_mu',
+                                                       'c_sigma',
+                                                       'r_inf',
                                                        'C_mu',
-                                                       # 'C_sigma',
-                                                       # 'V_mean_inf'
-                                                       ],
-                                        N_eigvals=3, N_procs=1)
-
+                                                       'C_sigma',
+                                                       'V_mean_inf'],
+                                        N_eigvals=3, N_procs=N_procs)
 
 
     # SAVING

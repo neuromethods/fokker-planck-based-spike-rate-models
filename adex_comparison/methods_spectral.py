@@ -131,7 +131,7 @@ def  compute_quantities_given_sigma(arg_tuple):
     dmu = params['dmu_couplingterms']
     dsigma = params['dsigma_couplingterms']
     # for debugging purpuses
-    use_lambda_reg_diff = False
+    use_lambda_reg_diff = True
     lambda_12 = [lambda_1, lambda_2]
     
     quant_j = {}
@@ -422,8 +422,10 @@ def  compute_quantities_given_sigma(arg_tuple):
                     # get the eigenvalue n for the respective mu, sigma
 
                     # use new ordering currently in development
-                    if use_lambda_reg_diff:
+                    if N_eigvals > 2:
                         lambda_n_ij = lambda_reg_diff[n, i, j]
+                        if lambda_n_ij == 0.:
+                            lambda_n_ij = -3. + 0j
                     # use lambda 1 and 2
                     else:
                         lambda_n_ij = lambda_12[n][i, j]
@@ -509,15 +511,17 @@ def  compute_quantities_given_sigma(arg_tuple):
                         # print(lambda_reg_diff[k, i, j]==lambda_12[k][i, j])
                         # print(lambda_reg_diff[l, i, j]==lambda_12[l][i, j])
                         # if use_lambda_reg_diff:
-                        lambda_k_ij = lambda_reg_diff[k, i, j]
-                        lambda_l_ij = lambda_reg_diff[l, i, j]
-                        if lambda_k_ij == 0.:
-                            lambda_k_ij = -3. + 0j
-                        if lambda_l_ij == 0.:
-                            lambda_l_ij = -3. + 0j
-                        # else:
-                        # lambda_k_ij = lambda_12[k][i, j]
-                        # lambda_l_ij = lambda_12[l][i, j]
+                        if N_eigvals > 2:
+                            lambda_k_ij = lambda_reg_diff[k, i, j]
+                            lambda_l_ij = lambda_reg_diff[l, i, j]
+                            if lambda_k_ij == 0.:
+                                lambda_k_ij = -3. + 0j
+                            if lambda_l_ij == 0.:
+                                lambda_l_ij = -3. + 0j
+                        # compute with the first two dominant eigenvalues
+                        else:
+                            lambda_k_ij = lambda_12[k][i, j]
+                            lambda_l_ij = lambda_12[l][i, j]
 
 
                         if q == 'C_mu':
@@ -649,7 +653,7 @@ class SpectralSolver(object):
         N_mu = mu_arr.shape[0]
         N_sigma = sigma_arr.shape[0]
         lambda_all = np.zeros((N_eigvals, N_mu, N_sigma), dtype=np.complex128)
-    
+
         
         arg_tuple_list = [(self.params, mu_arr, sigma_arr, j, N_eigvals, eigenval_init_real_grid) 
                             for j in range(N_sigma)]
@@ -695,6 +699,7 @@ class SpectralSolver(object):
 
         # replace the following lambdas with lambda_selected if existant
         # lambda_1 & lambda_2 --> lambda_all
+        # dominant two eigenvalues
         lambda_1 = quantities_dict['lambda_1']
         lambda_2 = quantities_dict['lambda_2']
         # lambda_all is not really needed here
@@ -721,7 +726,6 @@ class SpectralSolver(object):
 
             elif q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                 quantities_dict[q] = np.zeros((N_eigvals, N_mu, N_sigma)) +0j # complex type
-
 
             # complex quants
             elif q in ['C_mu', 'C_sigma']:
@@ -1912,7 +1916,6 @@ def eigenvalues_reg_diff(lambda_all, mu, sigma):
             # fill diffusive eigenmodes
             for n_diff in range(len_diff):
                 eigenvalues_sorted_diff[n_diff, m, s] = diffusive_modes[n_diff]
-
 
     return eigenvalues_sorted_reg, eigenvalues_sorted_diff
 

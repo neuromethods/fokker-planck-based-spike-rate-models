@@ -26,17 +26,17 @@ import models.alpha.alpha_model as alpha
 # network simulation
 run_network =  False
 # full fokker planck model
-run_fp =       True
+run_fp =       False
 
 # reduced models
 # ln cascade
-run_ln_exp =   True
+run_ln_exp =   False
 run_ln_dos=   False
 run_ln_bexdos = False 
 
 # spectral
-run_spec1    =    True
-run_spec2   =    True
+run_spec1    =    False
+run_spec2   =    False
 run_spec2_red = False
 run_alpha = True
 
@@ -85,7 +85,7 @@ params['min_dt'] = min(params['uni_dt'], params['net_dt'],params['fp_dt'])
 
 ln_data = 'quantities_cascade.h5'
 spec_data = 'quantities_spectral_master.h5'
-spec_data2 = 'quantities_spectral_elnath.h5'
+spec_data2 = 'quantities_spectral_master_new.h5'
 params['t_ref'] = 0.0
 
 # plotting section
