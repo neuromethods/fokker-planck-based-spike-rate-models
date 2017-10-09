@@ -265,6 +265,9 @@ def  compute_quantities_given_sigma(arg_tuple):
         lambda_target = lambda_curve[-1]
         return lambda_target
 
+    # intitialize a skip_computing indicator for quantities
+    skip_computing = None
+
     # loop over N_mu
     for i in range(N_mu):
         # abbreviations
@@ -411,11 +414,14 @@ def  compute_quantities_given_sigma(arg_tuple):
                         # print(psi_N_cache[0][mu_i, sigma_j])
                         # print(psi_N_cache[1][mu_i, sigma_j])
                         # print('-----------------')
-
+                    # todo: from here on we can check which is the eigenvalue; if it is too small (below threshold) set all quantities to zero
+                    # todo: here we can directly check if the value is too low
+                    if lambda_n_ij[n,i,j] <= -3:
+                        skip_computing = n
                     # vector of c_mu
                     # inner product between (discretized) partial derivative of psi w.r.t mu and
                     # the stationary distribution of active (i.e. non refractory) neurons
-                    if q == 'c_mu':
+                    if q == 'c_mu' and skip_computing != n:
                         # we need to evaluate psi_n(mu+-dmu) and thus lambda_n(mu+-dmu)
                         lambda_n_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_n_ij)
                         V_arr, psi_n_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_n_plus_mu, n)
@@ -433,6 +439,8 @@ def  compute_quantities_given_sigma(arg_tuple):
                         # save in quant_j-dict
                         # print(c_mu_n)
                         quant_j[q][n][i] = c_mu_n
+                    else:
+                        quant_j[q][n][i] = 0
 
                     # vector of c_sigma
                     if q == 'c_sigma':
