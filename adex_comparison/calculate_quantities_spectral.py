@@ -10,7 +10,13 @@
 
 # Please cite the publication which has introduced the solver if you want to use it: 
 #    Augustin, Ladenbauer, Baumann, Obermayer (2017) PLOS Comput Biol
-    
+
+
+
+# # todo: download quantities:
+#  -> currently computing on antares(3) and merope(2)
+
+
 import sys
 sys.path.insert(1, '..')
 from methods_spectral import SpectralSolver, spectrum_enforce_complex_conjugation, \
@@ -40,7 +46,7 @@ params = get_params()
 # file containing the full spectrum (all eigenvalues), 
 # the two dominant eigenvalues as well as all further quantities for 
 # a rectangle of input parameter values for the mean and std dev (mu, sigma)
-filename = 'quantities_spectral_master_new.h5'
+filename = 'quantities_spectral_elnath.h5'
 
 folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
 
@@ -291,17 +297,30 @@ eigenvalue_sorting = True
 if eigenvalue_sorting:
     # store the first 2 regular & 1 diffusive eigenmodes
     lambda_reg,lambda_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
-    lambda_1x2regular_1x1diffusive = np.zeros((3, 461, 46))+0j
-    # save the first two regular eigenmodes and the first diffusive eigenmode
-    lambda_1x2regular_1x1diffusive[:2, :, :] = lambda_reg[:2, :, :]
-    lambda_1x2regular_1x1diffusive[2, :, :] = lambda_diff[0, :, :]
+    # decide at this point how the eigenmodes will be sorted!
+    # nr_reg, nr_diff
+    # smooth but might not be dominant
+    nr_reg = 2
+    nr_diff = 1
+    # construct matrix containing all chosen eigenvalues
+    lambda_reg_diff = np.zeros((nr_reg + nr_diff, 461, 46)) + 0j
+    for reg in range(nr_reg):
+        lambda_reg_diff[reg, :, :] = lambda_reg[reg,:,:]
+    for diff in range(nr_diff):
+        lambda_reg_diff[nr_reg+diff,:,:] = lambda_diff[diff,:,:]
 
-    quantities_dict['lambda_1x2regular_1x1diffusive'] = lambda_1x2regular_1x1diffusive
-    quantities_dict['lambda_diffusive'] = lambda_diff
-    quantities_dict['lambda_diffusive'] = lambda_diff
-    quantities_dict['lambda_regular'] = lambda_reg
+
+    # these are the three eigenvalues we use now for the computation
+    quantities_dict['lambda_reg_diff'] = lambda_reg_diff
     specsolv.save_quantities(folder+'/'+filename, quantities_dict)
 
+    # print(quantities_dict.keys())
+    # idxc = 30
+    # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[0, :,idxc])
+    # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[1, :,idxc])
+    # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[2, :,idxc])
+    # plt.show()
+    # exit()
 
 
 quant_computed = False
@@ -317,9 +336,10 @@ if compute_quant and not quant_loaded:
     # do the actual quantity computation of the mu sigma rectangle via the following method call
     # restrict mu, sigma
 
-    specsolv.params['use_lambda_reg_diff'] = False
-    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)[:8]
+    # specsolv.params['use_lambda_reg_diff'] = False
+    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)
     quantities_dict['mu'] = np.linspace(-1.5, 10., N_mu)
+
 
 
     # this method adds the computed quantities to the
@@ -327,17 +347,21 @@ if compute_quant and not quant_loaded:
     specsolv.compute_quantities_rect(quantities_dict,
                                         # comment out for default
                                         # computation of all quants
-                                        quant_names = [# 'f',
-                                                       # 'psi_r',
-                                                       # 'c_mu',
-                                                       # 'c_sigma',
-                                                       # 'r_inf',
+                                        quant_names = ['r_inf',
+                                                       'V_mean_inf',
+                                                       'f',
+                                                       'psi_r',
+                                                       'c_mu',
+                                                       'c_sigma',
+                                                       'r_inf',
                                                        'C_mu',
-                                                       # 'C_sigma',
-                                                       # 'V_mean_inf'
-                                                       ],
-                                        N_eigvals=3, N_procs=1)
-
+                                                       'C_sigma',
+                                                       'V_mean_inf',
+                                                       'dr_inf_dmu',
+                                                       'dr_inf_dsigma',
+                                                       'dV_mean_inf_dmu',
+                                                       'dV_mean_inf_dsigma'],
+                                        N_eigvals = 3, N_procs = cpu_count())
 
 
     # SAVING
@@ -345,7 +369,6 @@ if compute_quant and not quant_loaded:
     # quantities: saving into hdf5 file: lambda_1, lambda_2, r_inf, V_mean_inf
     # and those coefficients required for the spectral_mattia_diff model
     if save_quant:
-
         specsolv.save_quantities(folder+'/'+filename, quantities_dict)
         print('saving quantities after computing done.')
 
@@ -364,8 +387,8 @@ if postprocess_quant:
                            quant_names=['lambda_1', 'lambda_2',
                                         'f', 'psi_r', 'psi_r',
                                         'c_mu', 'c_sigma', 'c_sigma'],
-                            minsigma_interp=0.5, maxsigma_interp=5., maxmu_interp=0.52, 
-                            tolerance_conjugation=params['tolerance_conjugation'])
+                           minsigma_interp=0.5, maxsigma_interp=5., maxmu_interp=0.52,
+                           tolerance_conjugation=params['tolerance_conjugation'])
     
     if save_quant:
         specsolv.save_quantities(folder+'/'+filename, quantities_dict)
