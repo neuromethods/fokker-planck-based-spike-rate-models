@@ -214,51 +214,6 @@ def  compute_quantities_given_sigma(arg_tuple):
         V_mean_inf_noref =  np.sum(V_center * phi0_center * np.diff(V_arr))
 
         return V_mean_inf_noref
-        
-    
-    # computing eigenfunction psi_1 of adjoint operator, lambda_1 should be an eigenvalue
-    def psi1(mu, sigma, lambda_1, cache=True):
-        # use global caching variable to prevent redundant computation
-        global psi_1_cache, V_arr_cache
-        if not cache or psi_1_cache is None: # only compute stationary mode if not already stored temporarily            
-            V_arr_cache, psi_1_cache, dpsi = specsolv.eigenfunction(lambda_1, mu, sigma, 
-                                                              adjoint=True) 
-        return V_arr_cache, psi_1_cache
-        
-    
-    # computing eigenfunction psi_2 of adjoint operator, lambda_2 should be an eigenvalue
-    def psi2(mu, sigma, lambda_2, cache=True):
-        # use global caching variable to prevent redundant computation
-        global psi_2_cache, V_arr_cache
-        if not cache or psi_2_cache is None: # only compute stationary mode if not already stored temporarily            
-            V_arr_cache, psi_2_cache, dpsi = specsolv.eigenfunction(lambda_2, mu, sigma, 
-                                                              adjoint=True) 
-        return V_arr_cache, psi_2_cache
-
-    
-    def phi1(mu, sigma, lambda_1):
-        V_arr, psi_1 = psi1(mu, sigma, lambda_1)
-        V_arr, phi_1, q_1 = specsolv.eigenfunction(lambda_1, mu, sigma)
-        # binormalize phi_1 s.t. the inner product (psi_1, phi_1) = 1
-        inprod1 = inner_prod(psi_1, phi_1, V_arr)
-        if params['verboselevel'] > 0:
-            print('inner product (phi1)={}'.format(inprod1))
-        phi_1 /= inprod1
-        q_1 /= inprod1
-        
-        return V_arr, phi_1, q_1
-        
-    def phi2(mu, sigma, lambda_2):
-        V_arr, psi_2 = psi2(mu, sigma, lambda_2)
-        V_arr, phi_2, q_2 = specsolv.eigenfunction(lambda_2, mu, sigma)
-        # binormalize phi_2 s.t. the inner product (psi_2, phi_2) = 1
-        inprod2 = inner_prod(psi_2, phi_2, V_arr)
-        if params['verboselevel'] > 0:
-            print('inner product (phi2)={}'.format(inprod2))
-        phi_2 /= inprod2
-        q_2 /= inprod2
-        
-        return V_arr, phi_2, q_2
 
 
     # general helpers (N)
@@ -308,7 +263,6 @@ def  compute_quantities_given_sigma(arg_tuple):
         # alternative to the following: try/except -- interpolate coarse grid of lambda_all if error
         lambda_curve = specsolve.eigenvalue_curve(lambda_init, mu_sigma_curve)
         lambda_target = lambda_curve[-1]
-        
         return lambda_target
 
     # loop over N_mu
@@ -424,17 +378,9 @@ def  compute_quantities_given_sigma(arg_tuple):
                     # use new ordering currently in development
                     if N_eigvals > 2:
                         lambda_n_ij = lambda_reg_diff[n, i, j]
-                        if lambda_n_ij == 0.:
-                            lambda_n_ij = -3. + 0j
-                    # use lambda 1 and 2
                     else:
                         lambda_n_ij = lambda_12[n][i, j]
-                        # if n == 0:
-                        #     lambda_n_ij = lambda_1[i, j]
-                        # elif n == 1:
-                        #     lambda_n_ij = lambda_2[i, j]
-                        # else:
-                        #     print('only implemented eigenvalues 1 and 2')
+
 
                     # lambda_n_ij = lambda_all[n, i, j]
                     # vector of f's
@@ -561,7 +507,6 @@ def  compute_quantities_given_sigma(arg_tuple):
 
                             # save in quant_j-dict
                             quant_j[q][k][l][i] = C_sigma_kl
-
 
     comp_single_duration = time.time() - comp_single_start
 
@@ -705,7 +650,7 @@ class SpectralSolver(object):
         # lambda_all is not really needed here
         # lambda_all = quantities_dict['lambda_all']
         # this is the new ordered data structure
-        lambda_reg_diff = quantities_dict['lambda_1x2regular_1x1diffusive']
+        lambda_reg_diff = quantities_dict['lambda_reg_diff']
 
 
 
@@ -880,6 +825,7 @@ class SpectralSolver(object):
             warn('adjoint normalization not working properly, better use non-adjoint here or large abs tol if really necessary')
         
         len_mu_sigma = mu_sigma.shape[0]
+        # this will be returned
         lambda_arr = np.zeros(len_mu_sigma, dtype=np.complex128)
         
         # for better pydev code analysis
@@ -890,14 +836,13 @@ class SpectralSolver(object):
         lastsigma_diff = None
         lastlambda_diff = None
 
-
         # whenever convergence fails despite of the nested solver structure we set 
         # the eigenvalue to the previous eigenvalue and increase the following counter
         # which is only reset when a successful eigenvalue computation happened
         workaround_usage = 0
         self.params['solver_xtol_orig'] = self.params['root_options']['xtol']
         self.params['solver_abstol_orig'] = self.params['solver_abstol']
-        
+
         for i in range(len_mu_sigma):
             
             
@@ -954,6 +899,7 @@ class SpectralSolver(object):
                     try:
                         if self.params['verboselevel']>=1:
                             print('eigen_ind={eigen_ind}, mu={mu}, sigma={sigma}, lambda_init={lambda_init}'.format(**locals()))
+                        # calculate lambda value
                         lambda_calc =  self.eigenvalue(lambda_init, real=real, root_extra_options=root_extra_options, adjoint=adjoint)
                         
                         # continuity check
@@ -1065,6 +1011,7 @@ class SpectralSolver(object):
                         print('we reached the lowest possible lambda value, further calculation is unnecessary for eigenvalue index {} at mu={}, sigma={}'.format(eigen_ind, mu_calc, sigma_calc))
                         lambda_arr[i:] = lambda_calc
                         return lambda_arr
+
                 else:
                     warn('throwing away in-between mu sigma values and those eigenvalues as well')
                 
