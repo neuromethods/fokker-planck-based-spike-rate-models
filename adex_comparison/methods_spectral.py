@@ -266,7 +266,7 @@ def  compute_quantities_given_sigma(arg_tuple):
         return lambda_target
 
     # intitialize a skip_computing indicator for quantities
-    skip_computing = None
+    skip_computing = False
 
     # loop over N_mu
     for i in range(N_mu):
@@ -378,14 +378,9 @@ def  compute_quantities_given_sigma(arg_tuple):
                 for n in xrange(N_eigvals):
                     # get the eigenvalue n for the respective mu, sigma
 
-                    # use new ordering currently in development
-                    if N_eigvals > 2:
-                        lambda_n_ij = lambda_reg_diff[n, i, j]
-                    else:
-                        lambda_n_ij = lambda_12[n][i, j]
+                    # always use the newly ordered eigenvalues
+                    lambda_n_ij = lambda_reg_diff[n, i, j]
 
-
-                    # lambda_n_ij = lambda_all[n, i, j]
                     # vector of f's
                     if q == 'f':
                         V_arr, phi_n, q_n = phiN(mu_i, sigma_j, lambda_n_ij, n)
@@ -398,30 +393,23 @@ def  compute_quantities_given_sigma(arg_tuple):
                     # vector of psi_r's
                     # psi_r_k is just the eigenfunction psi_k evaluated at the reset
                     if q == 'psi_r':
-                        # print(len(psi_N_cache))
-                        # print(type(psi_N_cache[0][(mu_i, sigma_j)]))
-                        # print(psi_N_cache[0][(mu_i, sigma_j)])
-                        # print(type(psi_N_cache[1][(mu_i, sigma_j)]))
-                        # print(psi_N_cache[1][(mu_i, sigma_j)])
                         V_arr, psi_n = psiN(mu_i, sigma_j, lambda_n_ij, n)
                         k_r = np.argmin(np.abs(V_arr-params['V_r']))
                         psi_r_n = psi_n[k_r]
-                        #save in quant_j-dict
-                        # print(psi_r_n)
                         quant_j[q][n][i] = psi_r_n
-                        # print(n)
-                        # print(lambda_n_ij)
-                        # print(psi_N_cache[0][mu_i, sigma_j])
-                        # print(psi_N_cache[1][mu_i, sigma_j])
-                        # print('-----------------')
+
+
                     # todo: from here on we can check which is the eigenvalue; if it is too small (below threshold) set all quantities to zero
                     # todo: here we can directly check if the value is too low
-                    if lambda_n_ij[n,i,j] <= -3:
-                        skip_computing = n
+
+                    # todo: remove this hack and put it into the function eigenvalue_robust somehow
+                    if abs(lambda_n_ij) >= 3:
+                        skip_computing = True
+
                     # vector of c_mu
                     # inner product between (discretized) partial derivative of psi w.r.t mu and
                     # the stationary distribution of active (i.e. non refractory) neurons
-                    if q == 'c_mu' and skip_computing != n:
+                    if q == 'c_mu' and not skip_computing:
                         # we need to evaluate psi_n(mu+-dmu) and thus lambda_n(mu+-dmu)
                         lambda_n_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_n_ij)
                         V_arr, psi_n_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_n_plus_mu, n)
@@ -430,20 +418,15 @@ def  compute_quantities_given_sigma(arg_tuple):
                         V_arr, psi_n_minus_mu = psiN(mu_i-dmu, sigma_j, lambda_n_minus_mu, n)
                         # discretization of the partial derivative of psi w.r.t mu
                         dpsi_n_dmu = (psi_n_plus_mu - psi_n_minus_mu)/(2*dmu)
-                        # print(dpsi_n_dmu)
                         V_arr, phi_0_noref, r_inf_noref = phi0_rinf_noref(mu_i, sigma_j)
-                        # print(phi_0_noref)
-                        # compute inner product
-                        # print(V_arr)
                         c_mu_n = inner_prod(dpsi_n_dmu, phi_0_noref, V_arr)
-                        # save in quant_j-dict
-                        # print(c_mu_n)
                         quant_j[q][n][i] = c_mu_n
-                    else:
+
+                    elif q == 'c_mu' and skip_computing:
                         quant_j[q][n][i] = 0
 
                     # vector of c_sigma
-                    if q == 'c_sigma':
+                    if q == 'c_sigma' and not skip_computing:
                         # we need to evaluate psi_n(sigma+-dsigma) and thus lambda_n(sigma+-dsigma)
                         lambda_n_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_n_ij)
                         V_arr, psi_n_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_n_plus_sigma, n)
@@ -458,6 +441,10 @@ def  compute_quantities_given_sigma(arg_tuple):
                         c_sigma_n = inner_prod(dpsi_n_dsigma, phi_0_noref, V_arr)
                         #save in quant_j-dict
                         quant_j[q][n][i] = c_sigma_n
+                    elif q == 'c_sigma' and skip_computing:
+                        quant_j[q][n][i] = 0
+
+                    skip_computing = False
 
             if q in ['C_mu', 'C_sigma']:
                 for k in range(N_eigvals):
@@ -465,19 +452,16 @@ def  compute_quantities_given_sigma(arg_tuple):
                         # print(lambda_reg_diff[k, i, j]==lambda_12[k][i, j])
                         # print(lambda_reg_diff[l, i, j]==lambda_12[l][i, j])
                         # if use_lambda_reg_diff:
-                        if N_eigvals > 2:
-                            lambda_k_ij = lambda_reg_diff[k, i, j]
-                            lambda_l_ij = lambda_reg_diff[l, i, j]
-                            if lambda_k_ij == 0.:
-                                lambda_k_ij = -3. + 0j
-                            if lambda_l_ij == 0.:
-                                lambda_l_ij = -3. + 0j
-                        # compute with the first two dominant eigenvalues
-                        else:
-                            lambda_k_ij = lambda_12[k][i, j]
-                            lambda_l_ij = lambda_12[l][i, j]
 
-                        if q == 'C_mu':
+                        # which eigenvalues are taken.... -> generealize this!
+                        # from now on always use the newly ordered eigenvalues
+                        lambda_k_ij = lambda_reg_diff[k, i, j]
+                        lambda_l_ij = lambda_reg_diff[l, i, j]
+
+                        if abs(lambda_k_ij) >= 3:
+                            skip_computing = True
+
+                        if q == 'C_mu' and not skip_computing:
                             lambda_k_plus_mu = eigenvalue_robust((mu_i, sigma_j), (mu_i+dmu, sigma_j), lambda_k_ij)
                             V_arr, psi_k_plus_mu = psiN(mu_i+dmu, sigma_j, lambda_k_plus_mu, k)
 
@@ -494,9 +478,13 @@ def  compute_quantities_given_sigma(arg_tuple):
 
                             # save in quant_j-dict
                             quant_j[q][k][l][i] = C_mu_kl
+                        # set the whole row of the quantity matrix to zero
+                        elif q == 'C_mu' and skip_computing:
+                            quant_j[q][:, l, i] = np.zeros(N_eigvals, dtype=np.complex128)
 
 
-                        if q == 'C_sigma':
+
+                        if q == 'C_sigma' and not skip_computing:
                             # todo: check this again
                             lambda_k_plus_sigma = eigenvalue_robust((mu_i, sigma_j), (mu_i, sigma_j+dsigma), lambda_k_ij)
                             V_arr, psi_k_plus_sigma = psiN(mu_i, sigma_j+dsigma, lambda_k_plus_sigma, k)
@@ -514,6 +502,11 @@ def  compute_quantities_given_sigma(arg_tuple):
 
                             # save in quant_j-dict
                             quant_j[q][k][l][i] = C_sigma_kl
+
+                        elif q == 'C_sigma' and skip_computing:
+                            quant_j[q][ :, l, i] = np.zeros(N_eigvals, dtype=np.complex128)
+
+                    skip_computing = False
 
     comp_single_duration = time.time() - comp_single_start
 

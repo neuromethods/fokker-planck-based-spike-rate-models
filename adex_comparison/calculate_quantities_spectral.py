@@ -14,7 +14,7 @@
 
 
 # # todo: download quantities:
-#  -> currently computing on antares(3) and merope(2)
+# currently computing on antares, merope, cursa (for all quants)
 
 
 import sys
@@ -300,7 +300,7 @@ if eigenvalue_sorting:
     # decide at this point how the eigenmodes will be sorted!
     # nr_reg, nr_diff
     # smooth but might not be dominant
-    nr_reg = 2
+    nr_reg = 0
     nr_diff = 1
     # construct matrix containing all chosen eigenvalues
     lambda_reg_diff = np.zeros((nr_reg + nr_diff, 461, 46)) + 0j
@@ -315,7 +315,7 @@ if eigenvalue_sorting:
     specsolv.save_quantities(folder+'/'+filename, quantities_dict)
 
     # print(quantities_dict.keys())
-    # idxc = 30
+    # idxc = 2
     # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[0, :,idxc])
     # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[1, :,idxc])
     # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[2, :,idxc])
@@ -361,7 +361,7 @@ if compute_quant and not quant_loaded:
                                                        'dr_inf_dsigma',
                                                        'dV_mean_inf_dmu',
                                                        'dV_mean_inf_dsigma'],
-                                        N_eigvals = 3, N_procs = cpu_count())
+                                        N_eigvals = 1, N_procs = cpu_count())
 
 
     # SAVING
