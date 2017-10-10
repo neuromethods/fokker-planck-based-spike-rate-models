@@ -1,10 +1,14 @@
+# script for debugging the spectral models
+# with all its different versions
+
 from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 import sys
-sys.path.insert(1,'..') # allow parent modules to be imported
-sys.path.insert(1,'../..') # allow parent modules to be imported
-sys.path.insert(1,'../../..') # allow parent modules to be imported
+
+sys.path.insert(1, '..')  # allow parent modules to be imported
+sys.path.insert(1, '../..')  # allow parent modules to be imported
+sys.path.insert(1, '../../..')  # allow parent modules to be imported
 import time
 import params
 from misc.utils import generate_OUinput, x_filter, get_changing_input, interpolate_input
@@ -24,26 +28,32 @@ import models.alpha.alpha_model as alpha
 # what will be computed
 
 # network simulation
-run_network =  False
+run_network = False
 # full fokker planck model
-run_fp =       False
+run_fp = True
 
 # reduced models
 # ln cascade
-run_ln_exp =   False
-run_ln_dos=   False
-run_ln_bexdos = False 
+run_ln_exp = False
+run_ln_dos = False
+run_ln_bexdos = False
 
 # spectral
-run_spec1    =    False
-run_spec2   =    True
+run_spec1 = False
+run_spec2 = True
 run_spec2_red = False
 run_alpha = False
-
 
 # use as default the parameters from file params.py
 # if not specified else below
 params = params.get_params()
+
+# some changes in the dictionary
+params['color'] = {'net': 'b', 'fp': '0.6', 'ln_exp': 'darkmagenta', 'ln_dos': 'cyan',
+                   'ln_bexdos': 'green', 'spec1': 'darkgreen',
+                   'spec2_red': 'pink', 'spec2_2dom':'orange','spec2_2reg':'cyan', 'alpha': 'k'}
+params['lw'] = {'net': '1', 'fp': '2', 'ln_exp': '1', 'ln_dos': '2', 'ln_bexdos': '2',
+                'spec1': '1', 'spec2_red': '1','spec2_2dom':'1','spec2_2reg':'1', 'alpha': '1'}
 
 # runtime options
 # run simulation of uncoupled (rec=False) or recurrently coupled simulation (rec=True)
@@ -51,43 +61,35 @@ rec = False
 
 params['runtime'] = 1000.
 # number of neurons
-params['N_total'] = 5000 #50000
+params['N_total'] = 5000  # 50000
 # time steps for models
-params['uni_dt'] = 0.01 # [ms]
+params['uni_dt'] = 0.01  # [ms]
 params['fp_dt'] = 0.05
 params['net_dt'] = 0.05
 
-
-
-
-
 # coupling (and delay) params in the case of recurrency, i.e. rec = True
-params['K'] =  100
+params['K'] = 100
 params['J'] = 0.00
 params['delay_type'] = 2
 params['taud'] = 3.
 params['const_delay'] = 5.
 
-
 # adaptation params as scalars
 params['a'] = 0.
 params['b'] = 0.
 
-
 # [only for reduced models] switch between two different time integration schemes: (1) Euler, (2) Heun
 params['uni_int_order'] = 2
 
-
 # for generating the input; for all models which do
 # not have the same resolution we have to interpolate
-params['min_dt'] = min(params['uni_dt'], params['net_dt'],params['fp_dt'])
-
+params['min_dt'] = min(params['uni_dt'], params['net_dt'], params['fp_dt'])
 
 ln_data = 'quantities_cascade.h5'
 # spec_data = 'quantities_spectral_master.h5'
 # spec_data1 = 'quantities_spectral_merope.h5'
-spec_data2 = 'quantities_spectral_2reg.h5'
-spec_data2 = 'quantities_spectral.h5'
+spec_data2_2reg = 'quantities_spectral_2reg.h5'
+spec_data2_2dom = 'quantities_spectral.h5'
 params['t_ref'] = 0.0
 
 # plotting section
@@ -118,8 +120,8 @@ filter_std = True
 # external time trace used for generating input and plotting
 # if time step is unequal to model_dt input gets interpolated for
 # the respective model
-steps = int(params['runtime']/params['min_dt'])
-t_ext = np.linspace(0., params['runtime'], steps+1)
+steps = int(params['runtime'] / params['min_dt'])
+t_ext = np.linspace(0., params['runtime'], steps + 1)
 
 # time trace computed with min_dt
 params['t_ext'] = t_ext
@@ -129,22 +131,22 @@ params['t_ext'] = t_ext
 
 # mu_ext variants
 if input_mean == 'const':
-    mu_ext = np.ones(steps+1) * 1.
+    mu_ext = np.ones(steps + 1) * 1.
 
 # mu = OU process, sigma = const
 elif input_mean == 'OU':
     params['ou_X0'] = 0.
-    params['ou_mean']  = 1.
-    params['ou_sigma'] = .05
-    params['ou_tau']   = 50.
+    params['ou_mean'] = 1.4
+    params['ou_sigma'] = .4
+    params['ou_tau'] = 50.
     mu_ext = generate_OUinput(params)
 
 # oscillating inputs
 elif input_mean == 'osc':
-    freq = 0.005 #kHz
-    amp = 0.1  #mV/ms
-    offset = 0.5  #mV/ms
-    mu_ext = offset*np.ones(len(t_ext)) + amp*np.sin(2*np.pi*freq*t_ext)
+    freq = 0.005  # kHz
+    amp = 0.1  # mV/ms
+    offset = 1.5  # mV/ms
+    mu_ext = offset * np.ones(len(t_ext)) + amp * np.sin(2 * np.pi * freq * t_ext)
 
 # input is ramped over a certain time interval from mu_start to mu_end
 elif input_mean == 'ramp':
@@ -155,51 +157,51 @@ elif input_mean == 'ramp':
     mu_start = .1
     mu_end = 0.7
     mu_ext = get_changing_input(params['runtime'],
-                                ramp_start,params['min_dt'],mu_start,
-                                mu_end,duration_change=ramp_duration)
+                                ramp_start, params['min_dt'], mu_start,
+                                mu_end, duration_change=ramp_duration)
 
 # step input scenario for mean input
 elif input_mean == 'steps':
     # vals for steps
     vals = [1, 1, 1, 1, 1, 1.7,
-            1.3,2.7, 2.4, 3.5,
-            3,3.4, 4.1, 3.7, 3.5,
-            2.5,3,3.5, 2, 2.5]
+            1.3, 2.7, 2.4, 3.5,
+            3, 3.4, 4.1, 3.7, 3.5,
+            2.5, 3, 3.5, 2, 2.5]
 
     params['vals'] = vals
     params['duration_vals'] = 150.
 
 
     def step_plateaus_up_down(params):
-        steps = int(params['runtime']/params['min_dt'])
-        trace = np.zeros(steps+1)
-        val_idx = int(params['duration_vals']/params['min_dt'])
-        assert params['runtime']%params['duration_vals']==0
-        assert len(vals)*params['duration_vals'] == params['runtime']
+        steps = int(params['runtime'] / params['min_dt'])
+        trace = np.zeros(steps + 1)
+        val_idx = int(params['duration_vals'] / params['min_dt'])
+        assert params['runtime'] % params['duration_vals'] == 0
+        assert len(vals) * params['duration_vals'] == params['runtime']
         for i in xrange(len(params['vals'])):
-            trace[i*val_idx:i*val_idx+val_idx] = params['vals'][i]
+            trace[i * val_idx:i * val_idx + val_idx] = params['vals'][i]
         return trace
 
-    mu_ext=step_plateaus_up_down(params)
 
+    mu_ext = step_plateaus_up_down(params)
 
 # sigma_ext variants
 if input_std == 'const':
-    sigma_ext = np.ones(steps+1) * 1.0
+    sigma_ext = np.ones(steps + 1) * 5.
 
 
 elif input_std == 'step':
-    sigma_ext = np.ones(steps+1)* 4.0
-    sigma_ext[int(steps/3):int(2*steps/3)] = 3.0
-    sigma_ext[int(2*steps/3):] = 1.5
-    
+    sigma_ext = np.ones(steps + 1) * 4.0
+    sigma_ext[int(steps / 3):int(2 * steps / 3)] = 3.0
+    sigma_ext[int(2 * steps / 3):] = 1.5
+
 
 # mu = const, sigma = OU process
 elif input_std == 'OU':
-    params['ou_X0'] =  0. #only relevant if params['ou_stationary'] = False
-    params['ou_mean']  = 2.10
+    params['ou_X0'] = 0.  # only relevant if params['ou_stationary'] = False
+    params['ou_mean'] = 2.10
     params['ou_sigma'] = .05
-    params['ou_tau']   = 50.
+    params['ou_tau'] = 50.
     sigma_ext = generate_OUinput(params)
 
 elif input_std == 'ramp':
@@ -209,11 +211,10 @@ elif input_std == 'ramp':
     ramp_duration = 100.
     sigma_start = 3.5
     sigma_end = 1.5
-    sigma_ext = get_changing_input(params['runtime'],ramp_start, params['min_dt'],sigma_start,
-                                   sigma_end,duration_change=ramp_duration)
+    sigma_ext = get_changing_input(params['runtime'], ramp_start, params['min_dt'], sigma_start,
+                                   sigma_end, duration_change=ramp_duration)
 else:
     raise NotImplementedError
-
 
 # enforce in any case sufficiently large input
 mu_min = -1.0
@@ -225,13 +226,13 @@ sigma_ext[sigma_ext < sigma_min] = sigma_min - (sigma_ext[sigma_ext < sigma_min]
 sigma_max = 5.
 sigma_ext[sigma_ext > sigma_max] = sigma_max - (sigma_ext[sigma_ext > sigma_max] - sigma_max)
 
-# filter the input in order to have not sharp edges 
+# filter the input in order to have not sharp edges
 # filter params
 params['filter_type'] = 'gauss'
 # filter width in time domain ~ 6*filter_gauss_sigma
 # -> keep that in mind for resolution issues
 
-params['filter_gauss_sigma'] = 1. #1 for ramps, 0.1-0.5 for OU
+params['filter_gauss_sigma'] = 1.  # 1 for ramps, 0.1-0.5 for OU
 if filter_mean:
     mu_ext_orig = mu_ext
     mu_ext = x_filter(mu_ext_orig, params)
@@ -245,95 +246,64 @@ ext_input0 = [mu_ext, sigma_ext]
 # saving results in global results dict
 results = dict()
 results['input_mean'] = mu_ext
-results['input_sigma']= sigma_ext
+results['input_sigma'] = sigma_ext
 results['model_results'] = dict()
-
-
 
 print('\nModels run in {} mode.\n'.format('recurrent' if rec else 'feedforward'))
 
 # brian network sim
 if run_network:
-    ext_input = interpolate_input(ext_input0,params,'net')
+    ext_input = interpolate_input(ext_input0, params, 'net')
     results['model_results']['net'] = \
-        net.network_sim(ext_input, params, rec = rec)
+        net.network_sim(ext_input, params, rec=rec)
 
-
-#fokker planck equation solved using the Scharfetter-Gummel-flux approximation 
+# fokker planck equation solved using the Scharfetter-Gummel-flux approximation
 if run_fp:
     ext_input = interpolate_input(ext_input0, params, 'fp')
     results['model_results']['fp'] = \
         fp.sim_fp_sg(ext_input, params, rec=rec)
 
-#reduced models
+# reduced models
 
 # models based on a linear-nonlinear cascade
 if run_ln_exp:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     results['model_results']['ln_exp'] = \
         lnexp.run_ln_exp(ext_input, params, ln_data,
-                         rec_vars= params['rec_lne'], rec= rec)
+                         rec_vars=params['rec_lne'], rec=rec)
 
-if run_ln_dos:
-    ext_input = interpolate_input(ext_input0, params, 'reduced')
-    results['model_results']['ln_dos'] = \
-        lndos.run_ln_dos(ext_input, params,ln_data,
-                           rec_vars= params['rec_lnd'],
-                           rec= rec)
-
-# models based on a spectral decomposition of the Fokker-Planck operator
-if run_ln_bexdos:
-    ext_input = interpolate_input(ext_input0, params, 'reduced')
-    results['model_results']['ln_bexdos'] = \
-        lnbexdos.run_ln_bexdos(ext_input, params,ln_data,
-                               rec_vars=['wm'], rec = rec)
-
-
-if run_spec1:
-    ext_input = interpolate_input(ext_input0, params, 'reduced')
-    results['model_results']['spec1'] = \
-        s1.run_spec1(ext_input, params, spec_data,
-                     rec_vars=params['rec_s1'],
-                     rec = rec)
 
 if run_spec2:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
-    results['model_results']['spec2'] = \
-        s2.run_spec2(ext_input, params, spec_data2,
-                       rec_vars=['wm'],
-                       rec=rec)
+    results['model_results']['spec2_2dom'] = \
+        s2.run_spec2(ext_input, params, spec_data2_2dom,
+                     rec_vars=['wm'],
+                     rec=rec, filetype='old')
 
-if run_spec2_red:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
-    results['model_results']['spec2_red'] = \
-        s2_red.run_spec2_red(ext_input, params, rec_vars=params['rec_sm'],
-                                     rec=rec, filename_h5 = spec_data)
-
-
-if run_alpha:
-    ext_input = interpolate_input(ext_input0, params, 'reduced')
-    results['model_results']['alpha'] = \
-        alpha.run_alpha(ext_input, params, spec_data1)
-
-
+    results['model_results']['spec2_2reg'] = \
+        s2.run_spec2(ext_input, params, spec_data2_2reg,
+                     rec_vars=['wm'],
+                     rec=rec, filetype='new')
 
 # plotting section
 nr_p = plot_rates + plot_adapt + plot_input
-fig = plt.figure(); pidx = 1
+fig = plt.figure();
+pidx = 1
 
 # plot inputs
 if plot_input:
     ax_mu = fig.add_subplot(nr_p, 1, pidx)
-    plt.plot(t_ext, mu_ext_orig, color = 'k', lw=1.5) if filter_mean else 0
-    line_mu_final = plt.plot(t_ext, ext_input0[0], color = 'm', lw=1.5, label='$\mu_\mathrm{final}$')
+    plt.plot(t_ext, mu_ext_orig, color='k', lw=1.5) if filter_mean else 0
+    line_mu_final = plt.plot(t_ext, ext_input0[0], color='m', lw=1.5, label='$\mu_\mathrm{final}$')
     plt.ylabel('$\mu_{ext}$ [mV/ms]', fontsize=15)
-    ax_sig = plt.twinx()    
-    plt.plot(t_ext, sigma_ext_orig, color = 'g', lw=1.5) if filter_std else 0
-    line_sig_final = plt.plot(t_ext, ext_input0[1], color = 'b', lw=1.5, label='$\sigma_\mathrm{final}$')
+    ax_sig = plt.twinx()
+    plt.plot(t_ext, sigma_ext_orig, color='g', lw=1.5) if filter_std else 0
+    line_sig_final = plt.plot(t_ext, ext_input0[1], color='b', lw=1.5, label='$\sigma_\mathrm{final}$')
     plt.ylabel('$\sigma_{ext}$ [$\sqrt{mV}$/ms]', fontsize=15)
-    plt.legend([line_mu_final[0], line_sig_final[0]], 
+    plt.legend([line_mu_final[0], line_sig_final[0]],
                [line_mu_final[0].get_label(), line_sig_final[0].get_label()])
-    pidx +=1
+    pidx += 1
 
 # plot rates
 if plot_rates:
@@ -343,7 +313,7 @@ if plot_rates:
         lw = params['lw'][model]
         time = results['model_results'][model]['t']
         rates = results['model_results'][model]['r']
-        plt.plot(time, rates, label = model, color = color, lw=lw)
+        plt.plot(time, rates, label=model, color=color, lw=lw)
         plt.ylabel('r [Hz]')
         plt.legend()
     pidx += 1
@@ -359,7 +329,7 @@ if plot_adapt:
         wm_shape = wm.shape
         time_shape = time.shape
         plt.ylabel('<wm> [pA]')
-        plt.plot(time, wm, color = color, lw = lw)
+        plt.plot(time, wm, color=color, lw=lw)
 
     # plot also mean+std/mean-std if net was computed
     if 'net' in results:
@@ -368,8 +338,7 @@ if plot_adapt:
         w_std = results['model_results']['net']['w_std']
         wm_plus = wm + w_std
         wm_minus = wm - w_std
-        plt.fill_between(time,wm_minus, wm_plus, color = 'lightpink')
-
+        plt.fill_between(time, wm_minus, wm_plus, color='lightpink')
 
 if nr_p: plt.show()
 

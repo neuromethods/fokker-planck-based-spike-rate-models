@@ -292,7 +292,7 @@ def sim_spec2(mu_ext, dmu_ext_dt, d2mu_ext_dt2, sig_ext,
 
 def run_spec2(ext_signal, params, filename_h5,
                rec_vars=['wm'], rec=False,
-               FS=False, filter_input=False):
+               FS=False, filter_input=False, filetype='old'):
     if FS:
         raise NotImplementedError('FS-effects not implemented for spectral 2m model!')
 
@@ -337,7 +337,6 @@ def run_spec2(ext_signal, params, filename_h5,
 
     # todo: file toggle
     # load quantities from hdf5-file
-    filetype = 'old' #'new'
     h5file = tables.open_file(filename_h5, mode='r')
     mu_tab          = h5file.root.mu.read()
     sig_tab         = h5file.root.sigma.read()
