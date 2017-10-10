@@ -26,19 +26,19 @@ import models.alpha.alpha_model as alpha
 # network simulation
 run_network =  False
 # full fokker planck model
-run_fp =       False
+run_fp =       True
 
 # reduced models
 # ln cascade
-run_ln_exp =   False
+run_ln_exp =   True
 run_ln_dos=   False
 run_ln_bexdos = False 
 
 # spectral
 run_spec1    =    False
-run_spec2   =    False
+run_spec2   =    True
 run_spec2_red = False
-run_alpha = True
+run_alpha = False
 
 
 # use as default the parameters from file params.py
@@ -49,7 +49,7 @@ params = params.get_params()
 # run simulation of uncoupled (rec=False) or recurrently coupled simulation (rec=True)
 rec = False
 
-params['runtime'] = 300.
+params['runtime'] = 1000.
 # number of neurons
 params['N_total'] = 5000 #50000
 # time steps for models
@@ -84,8 +84,10 @@ params['min_dt'] = min(params['uni_dt'], params['net_dt'],params['fp_dt'])
 
 
 ln_data = 'quantities_cascade.h5'
-spec_data = 'quantities_spectral_master.h5'
-spec_data2 = 'quantities_spectral_master_new.h5'
+# spec_data = 'quantities_spectral_master.h5'
+# spec_data1 = 'quantities_spectral_merope.h5'
+spec_data2 = 'quantities_spectral_2reg.h5'
+spec_data2 = 'quantities_spectral.h5'
 params['t_ref'] = 0.0
 
 # plotting section
@@ -107,9 +109,9 @@ input_mean = 'OU'
 # filter input mean (necessary for spectral_2m model)
 filter_mean = True
 
-# input_std = 'const'
+input_std = 'const'
 # input_std = 'step'
-input_std = 'OU'
+# input_std = 'OU'
 # input_std = 'ramp'
 filter_std = True
 
@@ -127,17 +129,17 @@ params['t_ext'] = t_ext
 
 # mu_ext variants
 if input_mean == 'const':
-    mu_ext = np.ones(steps+1) * 2.
+    mu_ext = np.ones(steps+1) * 1.
 
 # mu = OU process, sigma = const
 elif input_mean == 'OU':
     params['ou_X0'] = 0.
-    params['ou_mean']  = 3.
+    params['ou_mean']  = 1.
     params['ou_sigma'] = .05
     params['ou_tau']   = 50.
     mu_ext = generate_OUinput(params)
 
-# oscillating input
+# oscillating inputs
 elif input_mean == 'osc':
     freq = 0.005 #kHz
     amp = 0.1  #mV/ms
@@ -183,7 +185,7 @@ elif input_mean == 'steps':
 
 # sigma_ext variants
 if input_std == 'const':
-    sigma_ext = np.ones(steps+1) * 1.3
+    sigma_ext = np.ones(steps+1) * 1.0
 
 
 elif input_std == 'step':
@@ -297,7 +299,7 @@ if run_spec1:
 if run_spec2:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     results['model_results']['spec2'] = \
-        s2.run_spec2(ext_input, params, spec_data,
+        s2.run_spec2(ext_input, params, spec_data2,
                        rec_vars=['wm'],
                        rec=rec)
 
@@ -311,7 +313,7 @@ if run_spec2_red:
 if run_alpha:
     ext_input = interpolate_input(ext_input0, params, 'reduced')
     results['model_results']['alpha'] = \
-        alpha.run_alpha(ext_input, params, spec_data2)
+        alpha.run_alpha(ext_input, params, spec_data1)
 
 
 

@@ -1,7 +1,7 @@
 from __future__ import print_function
 import sys
 from scipy.misc import derivative
-from matplotlib.pyplot import *
+import matplotlib.pyplot as plt
 import time
 from misc.utils import interpolate_xy, lookup_xy, x_filter
 import tables
@@ -334,20 +334,45 @@ def run_spec2(ext_signal, params, filename_h5,
     # membrane capacitance
     C = params['C']
 
+
+    # todo: file toggle
     # load quantities from hdf5-file
+    filetype = 'old' #'new'
     h5file = tables.open_file(filename_h5, mode='r')
     mu_tab          = h5file.root.mu.read()
     sig_tab         = h5file.root.sigma.read()
-    lambda_1        = h5file.root.lambda_1.read()
-    lambda_2        = h5file.root.lambda_2.read()
-    f1              = h5file.root.f_1.read()
-    f2              = h5file.root.f_2.read()
-    c_mu_1          = h5file.root.c_mu_1.read()
-    c_mu_2          = h5file.root.c_mu_2.read()
-    c_sigma_1       = h5file.root.c_sigma_1.read()
-    c_sigma_2       = h5file.root.c_sigma_2.read()
-    psi_r_1         = h5file.root.psi_r_1.read()
-    psi_r_2         = h5file.root.psi_r_2.read()
+
+    if filetype == 'new':
+        lambda_reg_diff = h5file.root.lambda_reg_diff.read()
+        lambda_1 = lambda_reg_diff[0,:,:]
+        lambda_2 = lambda_reg_diff[1,:,:]
+        f              = h5file.root.f.read()
+        f1 = f[0,:,:]
+        f2 = f[1,:,:]
+        c_mu          = h5file.root.c_mu.read()
+        c_mu_1 = c_mu[0,:,:]
+        c_mu_2 = c_mu[1,:,:]
+        c_sigma       = h5file.root.c_sigma.read()
+        c_sigma_1 = c_sigma[0,:,:]
+        c_sigma_2 = c_sigma[1,:,:]
+        psi_r         = h5file.root.psi_r.read()
+        psi_r_1 = psi_r[0,:,:]
+        psi_r_2 = psi_r[1,:,:]
+
+    elif filetype == 'old':
+        lambda_1 = h5file.root.lambda_1.read()
+        lambda_2 = h5file.root.lambda_2.read()
+        f1              = h5file.root.f_1.read()
+        f2              = h5file.root.f_2.read()
+        c_mu_1          = h5file.root.c_mu_1.read()
+        c_mu_2          = h5file.root.c_mu_2.read()
+        c_sigma_1       = h5file.root.c_sigma_1.read()
+        c_sigma_2       = h5file.root.c_sigma_2.read()
+        psi_r_1         = h5file.root.psi_r_1.read()
+        psi_r_2         = h5file.root.psi_r_2.read()
+
+
+
     dr_inf_dmu      = h5file.root.dr_inf_dmu.read()
     dr_inf_dsigma   = h5file.root.dr_inf_dsigma.read()
     dVm_dmu         = h5file.root.dV_mean_inf_dmu.read()
@@ -356,7 +381,14 @@ def run_spec2(ext_signal, params, filename_h5,
     r_inf           = h5file.root.r_inf.read()
     h5file.close()
 
-
+    # idx = -1
+    # plt.plot(lambda_1_old[:, idx], label = 'old')
+    # plt.plot(lambda_2_old[:, idx], label = 'old')
+    # plt.plot(lambda_1[:, idx])
+    # plt.plot(lambda_2[:, idx])
+    # plt.show()
+    # plt.legend()
+    # exit()
 
     # filter the input (typically done before calling here, thus disabled)
     # NOTE: this should result in a smooth input which
