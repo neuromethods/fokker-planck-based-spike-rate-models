@@ -88,12 +88,12 @@ eigenval_init_real_grid = np.linspace(-5, -1e-4, 5000)
 save_spec = True # save (and overwrite file) if spectrum computation or postprocessing happened
 load_spec = True # loading spectrum from file skips computation unless loading fails
 compute_spec = False # computes if not loaded
-postprocess_spectrum = False # enforce complex conjugation
+postprocess_spectrum = True # enforce complex conjugation
 
 save_quant = True # save (and overwrite file) if quantity computation or postprocessing happened
 load_quant = False # loading quantities from file skips quantity calculation unless loading fails
-compute_quant = True # whether to compute quantities at all
-postprocess_quant = True # remove numerical artefacts from quantities
+compute_quant = False # whether to compute quantities at all
+postprocess_quant = False # remove numerical artefacts from quantities
 obtain_fluxlb = True # whether to load or compute if not in file lambda -> q(V_lb) for smallest mu
 
 load_params = True # when loading spectrum or quantities the params dict values gets updated from file
@@ -101,7 +101,7 @@ load_params = True # when loading spectrum or quantities the params dict values 
 
 # PLOTTING PARAMETERS
 
-plot_paper_quantities = False            # the visualization used for Figure 7 of Augustin et al 2017
+plot_paper_quantities = True            # the visualization used for Figure 7 of Augustin et al 2017
 
 plot_full_spectrum_sigma = False        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
                                         # note that this is also contained in plot_paper_quantities
@@ -280,8 +280,8 @@ if load_quant:
     # todo: make it possible to load not the whole list
     quant_names = [ 'lambda_1', 'lambda_2',
                     'r_inf',
-                    # 'dr_inf_dmu', 'dr_inf_dsigma',
-                    # 'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
+                    'dr_inf_dmu', 'dr_inf_dsigma',
+                    'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
                     'f', 'psi_r', 'c_mu', 'c_sigma', 'C_mu', 'C_sigma',
                     'mu', 'sigma']
 
