@@ -46,7 +46,7 @@ params = get_params()
 # file containing the full spectrum (all eigenvalues), 
 # the two dominant eigenvalues as well as all further quantities for 
 # a rectangle of input parameter values for the mean and std dev (mu, sigma)
-filename = 'quantities_spectral_elnath.h5'
+filename = 'quantities_spectral_1diff.h5'
 
 folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
 
@@ -85,30 +85,30 @@ sigma = np.linspace(0.5, 5., N_sigma) # sigma (input noise intensity) grid. note
 eigenval_init_real_grid = np.linspace(-5, -1e-4, 5000) 
 
 # TOGGLES/FLAGS FOR SAVING/LOADING/COMPUTING/POSTPROCESSING
-save_spec = True # save (and overwrite file) if spectrum computation or postprocessing happened
+save_spec = False # save (and overwrite file) if spectrum computation or postprocessing happened
 load_spec = True # loading spectrum from file skips computation unless loading fails
 compute_spec = False # computes if not loaded
-postprocess_spectrum = True # enforce complex conjugation
+postprocess_spectrum = False # enforce complex conjugation
 
-save_quant = True # save (and overwrite file) if quantity computation or postprocessing happened
+save_quant = False # save (and overwrite file) if quantity computation or postprocessing happened
 load_quant = False # loading quantities from file skips quantity calculation unless loading fails
 compute_quant = False # whether to compute quantities at all
 postprocess_quant = False # remove numerical artefacts from quantities
-obtain_fluxlb = True # whether to load or compute if not in file lambda -> q(V_lb) for smallest mu
+obtain_fluxlb = False # whether to load or compute if not in file lambda -> q(V_lb) for smallest mu
 
 load_params = True # when loading spectrum or quantities the params dict values gets updated from file
 
 
 # PLOTTING PARAMETERS
 
-plot_paper_quantities = True            # the visualization used for Figure 7 of Augustin et al 2017
+plot_paper_quantities = False            # the visualization used for Figure 7 of Augustin et al 2017
 
-plot_full_spectrum_sigma = False        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
-                                        # note that this is also contained in plot_paper_quantities
-                                        
+plot_full_spectrum_sigma = True        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
+                                       # note that this is also contained in plot_paper_quantities
+
 plot_full_spectrum_eigvals = False      # the spectrum (mu, sigma) visualized with eigenvalue index running over subplots
 
-plot_quantities = [] # ['eigvals', 'real', 'composed'] # which quantitie types to plot
+plot_quantities = ['eigvals', 'real', 'composed'] # ['eigvals', 'real', 'composed'] # which quantitie types to plot
                                                   # additionally, choose no or any from 
                                                   # ['eigvals', 'real', 'complex', 'composed']
 
@@ -252,8 +252,8 @@ if postprocess_spectrum:
     # now we have extracted the first two dominant eigenvalues with
     # the property that for complex conjugate pairs (regular modes)
     # they are indeed complex conjugates and lambda_1 has positive imag. part
-    quantities_dict['lambda_1'] = lambda_1
-    quantities_dict['lambda_2'] = lambda_2
+    quantities_dict['lambda_1_dom'] = lambda_1
+    quantities_dict['lambda_2_dom'] = lambda_2
 
     if save_spec:
         specsolv.save_quantities(folder+'/'+filename, quantities_dict)
@@ -261,7 +261,10 @@ if postprocess_spectrum:
 
 else:
     specsolv.load_quantities(folder+'/'+filename, quantities_dict,
-                             quantities=['lambda_1', 'lambda_2'], load_params=False)
+                             quantities=['lambda_1', 'lambda_2', 'r_inf',
+                                         'f', 'dr_inf_dmu', 'dr_inf_dsigma',
+                                         'V_mean_inf', 'dV_mean_inf_dmu',
+                                         'dV_mean_inf_dsigma'], load_params=False)
 
 
 # II. QUANTITIES CORRESPONDING TO SPECTRUM ABOVE -- COMPUTATION/LOADING
@@ -293,7 +296,7 @@ if load_quant:
 
 
 # add lambda_1x2regular_1x1diffusive to the quantities in the dictionary
-eigenvalue_sorting = True
+eigenvalue_sorting = False
 if eigenvalue_sorting:
     # store the first 2 regular & 1 diffusive eigenmodes
     lambda_reg,lambda_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
@@ -479,7 +482,7 @@ if plot_validation:
 # TODO: enable all plotting stuff and adapt to new general data format
 
 if plot_quantities and 'eigvals' in plot_quantities:
-    
+
     plot_quantities_eigvals(quantities_dict, inds_sigma_plot, colormap_sigma=colormap_sigma,
                             plot_validation=plot_validation, quantities_validation=quantities_validation)
 
