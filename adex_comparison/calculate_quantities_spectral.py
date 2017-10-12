@@ -46,7 +46,7 @@ params = get_params()
 # file containing the full spectrum (all eigenvalues), 
 # the two dominant eigenvalues as well as all further quantities for 
 # a rectangle of input parameter values for the mean and std dev (mu, sigma)
-filename = 'quantities_spectral_1diff.h5'
+filename = 'quantities_spectral_2reg_1diff.h5'
 
 folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
 
@@ -94,7 +94,7 @@ save_quant = False # save (and overwrite file) if quantity computation or postpr
 load_quant = False # loading quantities from file skips quantity calculation unless loading fails
 compute_quant = False # whether to compute quantities at all
 postprocess_quant = False # remove numerical artefacts from quantities
-obtain_fluxlb = False # whether to load or compute if not in file lambda -> q(V_lb) for smallest mu
+obtain_fluxlb = True # whether to load or compute if not in file lambda -> q(V_lb) for smallest mu
 
 load_params = True # when loading spectrum or quantities the params dict values gets updated from file
 
@@ -103,27 +103,27 @@ load_params = True # when loading spectrum or quantities the params dict values 
 
 plot_paper_quantities = False            # the visualization used for Figure 7 of Augustin et al 2017
 
-plot_full_spectrum_sigma = True        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
+plot_full_spectrum_sigma = False        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
                                        # note that this is also contained in plot_paper_quantities
 
 plot_full_spectrum_eigvals = False      # the spectrum (mu, sigma) visualized with eigenvalue index running over subplots
 
-plot_quantities = ['eigvals', 'real', 'composed'] # ['eigvals', 'real', 'composed'] # which quantitie types to plot
+plot_quantities = []# 'eigvals', 'real', 'composed'] # ['eigvals', 'real', 'composed'] # which quantitie types to plot
                                                   # additionally, choose no or any from 
                                                   # ['eigvals', 'real', 'complex', 'composed']
 
-plot_validation = False # plot available quantities that were calculated by
+plot_validation = True # plot available quantities that were calculated by
                        # another method (here only the stationary quantities, 
                        # i.e., the steady state spike rate and mean membrane 
                        # potential obtained with the code of the cascade models 
                        # that is based on scripts from [Richardson 2007, Phys Rev E])
 
-plot_real_inits = False # plot the eigenfluxes at the lower bound for the densely 
+plot_real_inits = False # plot the eigenfluxes at the lower bound for the densely
                         # evaluated grid of real eigenvalue candidates lambda 
                         # (at a sufficiently small mean input) 
                         # note that this is also contained in plot_paper_quantities
 
-plot_eigenfunctions = False # plot some eigenfunctions
+plot_eigenfunctions = True # plot some eigenfunctions
                             # note that this is also contained in plot_paper_quantities
 
 
@@ -514,10 +514,15 @@ if plot_quantities and 'complex' in plot_quantities:
 
 if plot_quantities and 'composed' in plot_quantities:
     
-    composed_quantities = {'f.cmu' : quantities_dict['f_1']*quantities_dict['c_mu_1'] + quantities_dict['f_2']*quantities_dict['c_mu_2'],
-                           'f.csigma': quantities_dict['f_1']*quantities_dict['c_sigma_1'] + quantities_dict['f_2']*quantities_dict['c_sigma_2'],
-                           'f.(Lambda*cmu)' : quantities_dict['f_1']*quantities_dict['lambda_1']*quantities_dict['c_mu_1'] + quantities_dict['f_2']*quantities_dict['lambda_2']*quantities_dict['c_mu_2'],
-                           'f.(Lambda*csigma)' : quantities_dict['f_1']*quantities_dict['lambda_1']*quantities_dict['c_sigma_1'] + quantities_dict['f_2']*quantities_dict['lambda_2']*quantities_dict['c_sigma_2'],
+    # composed_quantities = {'f.cmu' : quantities_dict['f_1']*quantities_dict['c_mu_1'] + quantities_dict['f_2']*quantities_dict['c_mu_2'],
+    #                        'f.csigma': quantities_dict['f_1']*quantities_dict['c_sigma_1'] + quantities_dict['f_2']*quantities_dict['c_sigma_2'],
+    #                        'f.(Lambda*cmu)' : quantities_dict['f_1']*quantities_dict['lambda_1']*quantities_dict['c_mu_1'] + quantities_dict['f_2']*quantities_dict['lambda_2']*quantities_dict['c_mu_2'],
+    #                        'f.(Lambda*csigma)' : quantities_dict['f_1']*quantities_dict['lambda_1']*quantities_dict['c_sigma_1'] + quantities_dict['f_2']*quantities_dict['lambda_2']*quantities_dict['c_sigma_2'],
+    #                       }
+    composed_quantities = {'f.cmu' : quantities_dict['f'][0,:,:]*quantities_dict['c_mu'][0,:,:] + quantities_dict['f'][1,:,:]*quantities_dict['c_mu'][1,:,:],
+                           'f.csigma': quantities_dict['f'][0,:,:]*quantities_dict['c_sigma'][0,:,:] + quantities_dict['f'][1,:,:]*quantities_dict['c_sigma'][1,:,:],
+                           'f.(Lambda*cmu)' : quantities_dict['f'][0,:,:]*quantities_dict['lambda_1']*quantities_dict['c_mu'][0,:,:] + quantities_dict['f'][1,:,:]*quantities_dict['lambda_2']*quantities_dict['c_mu'][1,:,:],
+                           'f.(Lambda*csigma)' : quantities_dict['f'][0,:,:]*quantities_dict['lambda_1']*quantities_dict['c_sigma'][0,:,:] + quantities_dict['f'][1,:,:]*quantities_dict['lambda_2']*quantities_dict['c_sigma'][1,:,:],
                           }
     comp_quants_validat = {}
 
@@ -796,8 +801,8 @@ if plot_paper_quantities:
             plt.yticks([-.14, 0])
             
         
-        fcmu = (quantities_dict['f_1']*quantities_dict['c_mu_1'] + 
-                quantities_dict['f_2']*quantities_dict['c_mu_2']).real
+        fcmu = (quantities_dict['f'][0,:,:]*quantities_dict['c_mu'][0,:,:] +
+                quantities_dict['f'][1,:,:]*quantities_dict['c_mu'][1,:,:]).real
                 
         plt.subplot(4, 4, 3)
 
@@ -815,8 +820,8 @@ if plot_paper_quantities:
             plt.yticks(ylim)
         
                 
-        fcsigma2 = (quantities_dict['f_1']*quantities_dict['c_sigma_1'] + 
-                quantities_dict['f_2']*quantities_dict['c_sigma_2']).real / (2*sigma_vals[j]) # scale for sigma->sigma^2
+        fcsigma2 = (quantities_dict['f'][0,:,:]*quantities_dict['c_sigma'][0,:,:] +
+                quantities_dict['f'][1,:,:]*quantities_dict['c_sigma'][1,:,:]).real / (2*sigma_vals[j]) # scale for sigma->sigma^2
         dr_inf_dsigma2 = quantities_dict['dr_inf_dsigma'] / (2*sigma_vals[j])
         plt.subplot(4, 4, 7)
 
@@ -836,8 +841,8 @@ if plot_paper_quantities:
             
             
         
-        F_mu = (quantities_dict['f_1']*quantities_dict['c_mu_1']*quantities_dict['lambda_1'] + 
-                quantities_dict['f_2']*quantities_dict['c_mu_2']*quantities_dict['lambda_2']).real
+        F_mu = (quantities_dict['f'][0,:,:]*quantities_dict['c_mu'][0,:,:]*quantities_dict['lambda_1'] +
+                quantities_dict['f'][1,:,:]*quantities_dict['c_mu'][1,:,:]*quantities_dict['lambda_2']).real
         plt.subplot(4, 4, 4)
 
         plt.plot(mu_vals[inds_mu_plot], F_mu[inds_mu_plot,j], 
@@ -855,8 +860,8 @@ if plot_paper_quantities:
             
             
         
-        F_sigma2 = (quantities_dict['f_1']*quantities_dict['c_sigma_1']*quantities_dict['lambda_1'] + 
-                    quantities_dict['f_2']*quantities_dict['c_sigma_2']*quantities_dict['lambda_2']).real / (2*sigma_vals[j]) # scale for dsigma->dsigma^2
+        F_sigma2 = (quantities_dict['f'][0,:,:]*quantities_dict['c_sigma'][0,:,:]*quantities_dict['lambda_1'] +
+                    quantities_dict['f'][1,:,:]*quantities_dict['c_sigma'][1,:,:]*quantities_dict['lambda_2']).real / (2*sigma_vals[j]) # scale for dsigma->dsigma^2
         plt.subplot(4, 4, 8)
 
         plt.plot(mu_vals[inds_mu_plot], F_sigma2[inds_mu_plot,j], 
