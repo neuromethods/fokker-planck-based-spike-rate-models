@@ -1765,26 +1765,6 @@ def quantities_postprocess(quantities, quant_names,
 #            print('<psi_2|phi_1> = {}'.format(inner_prod(psi_2, phi_1, V_vec)))
 #
 
-
-
-
-
-
-
-
-# similar to postprocess spectrum only for more than just two eigenvalues
-def eigenvalue_sorting(lambda_all, mu, sigma, nrOfEigenvalues):
-    # take first two pairs of complex conjugated eigenvalues
-    lambda_sorted = np.zeros((nrOfEigenvalues, 461, 46)) + 0j
-    for mu_val in mu:
-        m = np.argmin(np.abs(mu-mu_val))
-        for sigma_val in sigma:
-            s = np.argmin(np.abs(sigma - sigma_val))
-            # reverse the sorting and take eigenvalues up to nrOfEigenvalues
-            lambda_sorted[:, m, s] = np.sort(lambda_all[:, m, s])[::-1][:nrOfEigenvalues]
-
-    return lambda_sorted
-
 # get the diffusive AND regular eigenvalues
 def eigenvalues_reg_diff(lambda_all, mu, sigma):
     # get the diffusive eigenmodes
