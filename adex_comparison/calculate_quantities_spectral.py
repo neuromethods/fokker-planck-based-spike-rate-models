@@ -300,9 +300,9 @@ eigenvalue_sorting = False
 if eigenvalue_sorting:
     # store the first 2 regular & 1 diffusive eigenmodes
     lambda_reg,lambda_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
-    # decide at this point how the eigenmodes will be sorted!
-    # nr_reg, nr_diff
-    # smooth but might not be dominant
+    # these are not the dominant eigenvalues but ordered with a
+    # differnet paradigm -> chose the nr. of diffusive (nr_diff)
+    # and regular (nr_reg) eigenmodes
     nr_reg = 0
     nr_diff = 1
     # construct matrix containing all chosen eigenvalues
@@ -317,32 +317,13 @@ if eigenvalue_sorting:
     quantities_dict['lambda_reg_diff'] = lambda_reg_diff
     specsolv.save_quantities(folder+'/'+filename, quantities_dict)
 
-    # print(quantities_dict.keys())
-    # idxc = 2
-    # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[0, :,idxc])
-    # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[1, :,idxc])
-    # plt.plot(np.linspace(-1.5, 10., N_mu), lambda_reg_diff[2, :,idxc])
-    # plt.show()
-    # exit()
-
 
 quant_computed = False
 if compute_quant and not quant_loaded:
 
-    # for debugging
-    # only compute the quantities for a few mu, sigma pairs
 
     # assure that lambda_1 & lambda_2 are in the quantities_dict
     assert 'lambda_1' and 'lambda_2' in quantities_dict # we need to find lambda_1 and lambda_2 before this
-
-    
-    # do the actual quantity computation of the mu sigma rectangle via the following method call
-    # restrict mu, sigma
-
-    # specsolv.params['use_lambda_reg_diff'] = False
-    quantities_dict['sigma'] = np.linspace(0.5, 5., N_sigma)
-    quantities_dict['mu'] = np.linspace(-1.5, 10., N_mu)
-
 
 
     # this method adds the computed quantities to the
@@ -350,20 +331,11 @@ if compute_quant and not quant_loaded:
     specsolv.compute_quantities_rect(quantities_dict,
                                         # comment out for default
                                         # computation of all quants
-                                        quant_names = ['r_inf',
-                                                       'V_mean_inf',
-                                                       'f',
-                                                       'psi_r',
-                                                       'c_mu',
-                                                       'c_sigma',
-                                                       'r_inf',
-                                                       'C_mu',
-                                                       'C_sigma',
-                                                       'V_mean_inf',
-                                                       'dr_inf_dmu',
-                                                       'dr_inf_dsigma',
-                                                       'dV_mean_inf_dmu',
-                                                       'dV_mean_inf_dsigma'],
+                                        quant_names = ['r_inf','V_mean_inf', 'f',
+                                                       'psi_r','c_mu','c_sigma','r_inf',
+                                                       'C_mu','C_sigma','V_mean_inf',
+                                                       'dr_inf_dmu','dr_inf_dsigma',
+                                                       'dV_mean_inf_dmu', 'dV_mean_inf_dsigma'],
                                         N_eigvals = 1, N_procs = cpu_count())
 
 
@@ -384,8 +356,6 @@ if postprocess_quant:
     
     # remove artefacts due to proximity to double eigenvalues at the transition from real to complex
     # by taking the value of the nearest neighbor for those mu, sigma values
-    # Todo: adapt for new quantity computation
-    print(quantities_dict.keys())
     quantities_postprocess(quantities_dict, 
                            quant_names=['lambda_1', 'lambda_2',
                                         'f', 'psi_r', 'psi_r',

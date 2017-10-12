@@ -1660,7 +1660,7 @@ def error(*s):
 # that are used to detect numerical artifacts
 
 # this postprossing only "corrects" quantities up to the second eigenvalue
-def quantities_postprocess(quantities, quant_names, 
+def quantities_postprocess(quantities, quant_names,
                            minsigma_interp, maxsigma_interp, maxmu_interp, 
                            tolerance_conjugation=1e-5):
     
