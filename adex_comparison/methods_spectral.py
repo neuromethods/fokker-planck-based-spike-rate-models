@@ -130,9 +130,6 @@ def  compute_quantities_given_sigma(arg_tuple):
     sigma_j = sigma_arr[j]
     dmu = params['dmu_couplingterms']
     dsigma = params['dsigma_couplingterms']
-    # for debugging purpuses
-    use_lambda_reg_diff = True
-    lambda_12 = [lambda_1, lambda_2]
     
     quant_j = {}
 
@@ -371,14 +368,14 @@ def  compute_quantities_given_sigma(arg_tuple):
 
             # loop over the N lambdas
             # test with eigenfluxes 'f'
-
-            # time.sleep(5)
             # print('mu {}, sigma {}'.format(mu_i, sigma_j))
             if q in ['f', 'psi_r', 'c_mu', 'c_sigma']:
                 for n in xrange(N_eigvals):
                     # get the eigenvalue n for the respective mu, sigma
 
                     # always use the newly ordered eigenvalues
+                    # todo: generalize this to lambda_sorted
+                    # todo: depending on flag 'dom','reg_diff' lambda_sorted contains the respective eigenvalues
                     lambda_n_ij = lambda_reg_diff[n, i, j]
 
                     # vector of f's
@@ -399,11 +396,9 @@ def  compute_quantities_given_sigma(arg_tuple):
                         quant_j[q][n][i] = psi_r_n
 
 
-                    # todo: from here on we can check which is the eigenvalue; if it is too small (below threshold) set all quantities to zero
-                    # todo: here we can directly check if the value is too low
 
-                    # todo: remove this hack and put it into the function eigenvalue_robust somehow
-                    if abs(lambda_n_ij) >= 3:
+                    # todo: Check with Moritz
+                    if abs(lambda_n_ij.real) >= 3.:
                         skip_computing = True
 
                     # vector of c_mu
@@ -458,7 +453,7 @@ def  compute_quantities_given_sigma(arg_tuple):
                         lambda_k_ij = lambda_reg_diff[k, i, j]
                         lambda_l_ij = lambda_reg_diff[l, i, j]
 
-                        if abs(lambda_k_ij) >= 3:
+                        if abs(lambda_k_ij.real) >= 3.:
                             skip_computing = True
 
                         if q == 'C_mu' and not skip_computing:
@@ -1794,14 +1789,11 @@ def eigenvalues_reg_diff(lambda_all, mu, sigma):
             # come in complex conjugated pairs.
             regular_modes = []  # in the end we will have len(regular_modes)+len(diffusive_modes)=10
             diffusive_modes = []
-            # todo: change this later to not be hardcoded!
-            # print(lambda_all[:, m, s])
             for n in range(10):
                 eigval_n_mu_sigma = lambda_all[n, m, s]
                 # loop over the list of eigenvalues for that mu/sigma combination
                 # and sort them into two different categories (diffusive/regular)
                 # according to their features.
-
                 # if eigval merges later -> regular
                 if eigval_n_mu_sigma.imag > 10e-7 or np.abs(lambda_all[n, -1, s].imag) > 10e-7:
                     regular_modes.append(eigval_n_mu_sigma)
@@ -1831,17 +1823,20 @@ def eigenvalues_reg_diff(lambda_all, mu, sigma):
             # which indices will be deleted
             del_idx = []
             for n in range(len_reg-1):
+                # idea of the following: if two consecutive regular modes have same real part (BUT HERE ONLY for pos. imag case is checked, negative imag is ignored) then only leave first and explicitly add another one by complex conjugation
+                # TODO: negative imag part could also be first.>that oimag sign should be flipped
                 if regular_modes[n].imag > 10e-7 and (np.abs(regular_modes[n].real-regular_modes[n+1].real) < 10e-8):
                     del_idx.append(n+1)
             regular_modes = [v for i,v in enumerate(regular_modes) if i not in del_idx]
 
-            # fill the regular eigenvalues in the ordered lamnda_sorted array
+            # fill the regular eigenvalues in the ordered lambda_sorted array
             # better with a while loop
             n_reg_modes = 0
             n_sorted = 0
             while n_reg_modes < len(regular_modes):
+                # TODO: negative imag part could also be first.>that oimag sign should be flipped
                 if regular_modes[n_reg_modes].imag > 10e-7:
-                    # ensure that positive imaginary part is always first
+                    # ensure that positive imaginary part is always first (when above todo is implemented)
                     eigenvalues_sorted_reg[n_sorted, m, s] = regular_modes[n_reg_modes]
                     eigenvalues_sorted_reg[n_sorted+1, m, s] = regular_modes[n_reg_modes].conjugate()
                     # update indices

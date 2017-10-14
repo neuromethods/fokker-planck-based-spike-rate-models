@@ -1,16 +1,53 @@
-spectral solver:
+Spectral solver:
 
-calculate_quantities_spectral.py
-    - the first two DOMINANT eigenvalues are always extracted from lambda_all -> lambda_1 and lambda_2 (in postprocess spectrum)
+calculate_quantities_spectral.py/methods_spectral.py
+####################################################
+    - the first two DOMINANT eigenvalues are always extracted from lambda_all -> lambda_1 and lambda_2
+    (in postprocess spectrum)
     - additionally we extract all available diffusive and regular eigenvalues and chose which
     (or rather how many [nr_reg, nr_diff]) we use finally to compute the corresponding quantities. These
     are stored in lambda_reg_diff -> quantities_dict!
-
-    - go through the reg_diff extracting functions
+    TODO: also save the nr,nd
+    - discuss how it should then be done in the calculate_quantities-method for the two cases
+        - compute quants for the dominant lambdas
+        - compute quants for reg/diffusive eigenvalues
+    - OR: Such that lambdas are always stored in a specific data structure no matter how they were sorted
+        - dom OR
+        - reg/diff
+        - this will affect the model implementations -> fix/check (spec2_model) wether roll back or not to original version
+        and use this only for future expl.
+        - e.g. flag at the beginning lambda_type = 'dom' #'reg_diff' and the respective number of eigenvalues
+        - adapt specsolv.compute_quantities_rect -> N_eigvals
+        TODO preferred: see quantities_dict['lambda_dom'] = [lambda_1,lambda_2] ---- check plotting effects!
+        TODO alternative: either case lambda_1 lambda_2 for n =0,1 or combine those in one array feeded into the function
+    - Check condition "if abs(lambda_n_ij.real) >= 3." in methods_spectral.py
+    TODO validae computation of quants in case of reg_diff eigenmodes
+    TODO validate (large) C_mu/sigma matrices with maurizio's data'
+    TODO: delete lines where quants are set to zero if skip_computing was true
+    - go through the reg_diff extracting functions -> seems to work but does not like nice. ORDER is always all_regs -> all_diffs
+    TODO: remove hard coded stuff (eigenvalue count)
+    TODO: simplify get_lambda_reg_diff: instead of duplicating and later removing redundant eigenvalues: assume sorted eigenvalues within class (explicit sorting) can be omitted)and after extracting
+    TODO: the eigenvalues pointwise (mu/sigma; note no global crossing possible hypothesized/assumed!) and enforce complex conjugation see lambda_1, lambda_2 procedure
     - postprocess_quantities was adapted for the new storing scheme (eg. f_1, f_2 -> f)
     - plotting code was adapted to new quantitiy-storing scheme
+    TODO check lambda_1/2 -> lambda_dom[0/1] if consistent also in plotting code
 
-models:
+    NOTE: the quantity files are for simulating different models, but they are not validated
+
+Models:
+    TODO: generally ensure that n_r and n_d are considered in the extraction of the eigenvalues
     - spec3: implement/debug
-    - spec2: now runnable with two different files -> scheme 'dom' for dominant modes, 'reg' for regular modes
+    TODO: - make feedforward runnable
+          - include recurrency as spec2
+          - Validate!!!
+          - check third order FD of ext moments -->
+    - spec2: now runnable with two different files -> scheme 'dom' for dominant modes, 'reg' for regular modes.
+        - TODO: remove debug quantites
+    - (new) spec1: not implemented yet, but probably only motivation for spec3
+    - ln_bexdos does not work -> Josef
+    - alpha model contains so far only simple feedforward case without FS-effects
+    TODO rename vander...
+    TODO add recurrency + derivative of total mean and sigma inputs + adaptation
+    TODO add finite size. Problem derivative of white noise (dot Gamma_N) due to mu/sigma-time derivative
+
 

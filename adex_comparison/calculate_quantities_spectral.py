@@ -101,18 +101,18 @@ load_params = True # when loading spectrum or quantities the params dict values 
 
 # PLOTTING PARAMETERS
 
-plot_paper_quantities = False            # the visualization used for Figure 7 of Augustin et al 2017
+plot_paper_quantities = True            # the visualization used for Figure 7 of Augustin et al 2017
 
-plot_full_spectrum_sigma = False        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
+plot_full_spectrum_sigma = True        # the spectrum (mu, eigenvalue index) visualized with sigma running over subplots
                                        # note that this is also contained in plot_paper_quantities
 
-plot_full_spectrum_eigvals = False      # the spectrum (mu, sigma) visualized with eigenvalue index running over subplots
+plot_full_spectrum_eigvals = True      # the spectrum (mu, sigma) visualized with eigenvalue index running over subplots
 
-plot_quantities = []# 'eigvals', 'real', 'composed'] # ['eigvals', 'real', 'composed'] # which quantitie types to plot
+plot_quantities = ['eigvals', 'real', 'composed'] # ['eigvals', 'real', 'composed'] # which quantitie types to plot
                                                   # additionally, choose no or any from 
                                                   # ['eigvals', 'real', 'complex', 'composed']
 
-plot_validation = True # plot available quantities that were calculated by
+plot_validation = False # plot available quantities that were calculated by
                        # another method (here only the stationary quantities, 
                        # i.e., the steady state spike rate and mean membrane 
                        # potential obtained with the code of the cascade models 
@@ -123,7 +123,7 @@ plot_real_inits = False # plot the eigenfluxes at the lower bound for the densel
                         # (at a sufficiently small mean input) 
                         # note that this is also contained in plot_paper_quantities
 
-plot_eigenfunctions = True # plot some eigenfunctions
+plot_eigenfunctions = False # plot some eigenfunctions
                             # note that this is also contained in plot_paper_quantities
 
 
@@ -251,6 +251,7 @@ if postprocess_spectrum:
     # now we have extracted the first two dominant eigenvalues with
     # the property that for complex conjugate pairs (regular modes)
     # they are indeed complex conjugates and lambda_1 has positive imag. part
+    # quantities_dict['lambda_dom'] = [lambda_1,lambda_2]
     quantities_dict['lambda_1'] = lambda_1
     quantities_dict['lambda_2'] = lambda_2
 
@@ -310,9 +311,6 @@ quant_computed = False
 if compute_quant and not quant_loaded:
 
 
-    # assure that lambda_1 & lambda_2 are in the quantities_dict
-    assert 'lambda_1' and 'lambda_2' in quantities_dict # we need to find lambda_1 and lambda_2 before this
-
     # this method adds the computed quantities to the
     # (specified in quant_names=[...] to quantities_dict
     specsolv.compute_quantities_rect(quantities_dict,
@@ -323,7 +321,7 @@ if compute_quant and not quant_loaded:
                                                        'dr_inf_dmu','dr_inf_dsigma',
                                                        'dV_mean_inf_dmu',
                                                        'dV_mean_inf_dsigma'],
-                                        N_eigvals = 1, N_procs = cpu_count())
+                                        N_eigvals = 2, N_procs = cpu_count())
 
 
     # SAVING

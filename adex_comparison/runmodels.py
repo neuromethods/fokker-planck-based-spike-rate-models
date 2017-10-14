@@ -30,13 +30,13 @@ run_fp =       False
 
 # reduced models
 # ln cascade
-run_ln_exp =   False
+run_ln_exp =   True
 run_ln_dos=   False
-run_ln_bexdos = False 
+run_ln_bexdos = False
 
 # spectral
 run_spec1    =    False
-run_spec2   =    True
+run_spec2   =    False
 run_spec2_red = False
 run_alpha = False
 
@@ -87,7 +87,7 @@ ln_data = 'quantities_cascade.h5'
 # spec_data = 'quantities_spectral_master.h5'
 # spec_data1 = 'quantities_spectral_merope.h5'
 spec_data2 = 'quantities_spectral_2reg.h5'
-spec_data2 = 'quantities_spectral.h5'
+# spec_data2 = 'quantities_spectral.h5'
 params['t_ref'] = 0.0
 
 # plotting section

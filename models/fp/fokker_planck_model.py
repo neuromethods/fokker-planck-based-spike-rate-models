@@ -280,29 +280,9 @@ def initial_p_distribution(grid,params):
 def sim_fp_sg(input, params, rec = False, FS=False):#, timing=None):
     '''solving the fp equation using the scharfetter gummel method'''
 
-    # default timing is None
-    # else: Number of time measurements
-    # if timing is not None:
-    #     times_expm = np.empty(timing)
-    #     times_convert_mat = np.empty(timing)
-    #    times_banded_solve = np.empty(timing)
-
-
-    # print('running sg scheme')
-
-
-    # time domain
-    # get time step; different ones for
-    # implicit scheme and exponential integrator
+    # integration parameters
     integration_method = params['integration_method']
     dt = params['fp_dt']
-    #if integration_method == 'implicit':
-        #dt = params['fp_dt_implicit']
-    #elif integration_method in ['expmPhi','expmEuler']:
-        #dt = params['fp_dt_expm']
-    #else:
-        #raise NotImplementedError
-
     runtime = params['runtime']
     steps = int(runtime/dt)
     inform = int(steps/10)
@@ -358,12 +338,8 @@ def sim_fp_sg(input, params, rec = False, FS=False):#, timing=None):
 
     N = params['N_total']
     noise_type = params['noise_type']
-    print(noise_type)
-    #exit()
     N_dt = N*dt
     norm_type = params['norm_type']
-    print(norm_type)
-    #exit()
     force_normalization = (norm_type is not None) and FS
 
 

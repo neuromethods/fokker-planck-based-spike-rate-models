@@ -6,6 +6,8 @@ import numpy as np
 from misc.utils import interpolate_xy, lookup_xy
 
 
+# for looking up in differently shaped data types (matrix, diag-matrix)
+# to support the matrix/vector form of the alpha integration
 def lookup_helper(tensor, q, q_string, N_eigvals, weights):
 
     if q_string in ['C_mu', 'C_sigma']:
@@ -20,7 +22,7 @@ def lookup_helper(tensor, q, q_string, N_eigvals, weights):
     else:
         # do stuff for vector of matrices
         for i in range(N_eigvals):
-            tensor[i] = lookup_xy(q[i, :], weights)
+            tensor[i] = lookup_xy(q[i, :, :], weights)
 
 
 
