@@ -158,8 +158,6 @@ def sim_spec2(mu_ext, dmu_ext_dt, d2mu_ext_dt2, sig_ext,
 
 
             # A is the same for all settings
-            # todo: remove A from tex AND code
-            # todo: make r_d array
             A[i+j] = (a[i+j]*(Vm_inf[i+j]-Ew)-wm[i+j])/(tauw*C)
 
 
@@ -292,7 +290,7 @@ def sim_spec2(mu_ext, dmu_ext_dt, d2mu_ext_dt2, sig_ext,
 
 def run_spec2(ext_signal, params, filename_h5,
                rec_vars=['wm'], rec=False,
-               FS=False, filter_input=False, filetype='old'):
+               FS=False, filetype='dom'):
     if FS:
         raise NotImplementedError('FS-effects not implemented for spectral 2m model!')
 
@@ -341,7 +339,7 @@ def run_spec2(ext_signal, params, filename_h5,
     mu_tab          = h5file.root.mu.read()
     sig_tab         = h5file.root.sigma.read()
 
-    if filetype == 'new':
+    if filetype == 'reg':
         lambda_reg_diff = h5file.root.lambda_reg_diff.read()
         lambda_1 = lambda_reg_diff[0,:,:]
         lambda_2 = lambda_reg_diff[1,:,:]
@@ -358,7 +356,7 @@ def run_spec2(ext_signal, params, filename_h5,
         psi_r_1 = psi_r[0,:,:]
         psi_r_2 = psi_r[1,:,:]
 
-    elif filetype == 'old':
+    elif filetype == 'dom':
         lambda_1 = h5file.root.lambda_1.read()
         lambda_2 = h5file.root.lambda_2.read()
         f1              = h5file.root.f_1.read()
@@ -380,14 +378,6 @@ def run_spec2(ext_signal, params, filename_h5,
     r_inf           = h5file.root.r_inf.read()
     h5file.close()
 
-    # idx = -1
-    # plt.plot(lambda_1_old[:, idx], label = 'old')
-    # plt.plot(lambda_2_old[:, idx], label = 'old')
-    # plt.plot(lambda_1[:, idx])
-    # plt.plot(lambda_2[:, idx])
-    # plt.show()
-    # plt.legend()
-    # exit()
 
     # filter the input (typically done before calling here, thus disabled)
     # NOTE: this should result in a smooth input which

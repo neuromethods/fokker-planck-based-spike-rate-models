@@ -1,13 +1,16 @@
 spectral solver:
 
 calculate_quantities_spectral.py
-    - the first two DOMINANT eigenvalues are always extracted from lambda_all -> lambda_1 and lambda_2
+    - the first two DOMINANT eigenvalues are always extracted from lambda_all -> lambda_1 and lambda_2 (in postprocess spectrum)
     - additionally we extract all available diffusive and regular eigenvalues and chose which
     (or rather how many [nr_reg, nr_diff]) we use finally to compute the corresponding quantities. These
     are stored in lambda_reg_diff -> quantities_dict!
-    -  postprocess_quantities was adapted for the new storing scheme (eg. f_1, f_2 -> f)
-    - plotting code was adapted to new storing scheme
+
+    - go through the reg_diff extracting functions
+    - postprocess_quantities was adapted for the new storing scheme (eg. f_1, f_2 -> f)
+    - plotting code was adapted to new quantitiy-storing scheme
 
 models:
-    - implement/debug the spec3 models
-    -
+    - spec3: implement/debug
+    - spec2: now runnable with two different files -> scheme 'dom' for dominant modes, 'reg' for regular modes
+

@@ -162,7 +162,7 @@ def get_params():
     #colors[modelname] = color
     params['color'] = {'net':'b', 'fp':'0.6','ln_exp':'darkmagenta', 'ln_dos':'cyan',
                        'ln_bexdos':'green', 'spec1':'darkgreen', 
-                       'spec2_red':'pink', 'spec2':'orangered', 'alpha':'k'}
+                       'spec2_red':'pink', 'spec2':'orangered', 'alpha':'k', 'spec3': 'b',}
     params['lw'] = {'net':'1', 'fp':'2','ln_exp':'1', 'ln_dos':'2', 'ln_bexdos':'2',
-                    'spec1':'1', 'spec2_red':'1', 'spec2': '1', 'alpha':'1'}
+                    'spec1':'1', 'spec2_red':'1', 'spec2': '1', 'spec3': '1', 'alpha':'1'}
     return params

@@ -24,7 +24,7 @@ from methods_spectral import SpectralSolver, spectrum_enforce_complex_conjugatio
                                           plot_raw_spectrum_sigma, plot_raw_spectrum_eigvals, \
                                           plot_quantities_eigvals, plot_quantities_real, \
                                           plot_quantities_complex, plot_quantities_composed, \
-                                          eigenvalues_reg_diff
+                                          eigenvalues_reg_diff, get_lambda_reg_diff
 from params import get_params
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,7 +46,7 @@ params = get_params()
 # file containing the full spectrum (all eigenvalues), 
 # the two dominant eigenvalues as well as all further quantities for 
 # a rectangle of input parameter values for the mean and std dev (mu, sigma)
-filename = 'quantities_spectral_2reg_1diff.h5'
+filename = 'quantities_spectral.h5'
 
 folder = os.path.dirname(os.path.realpath(__file__)) # store files in the same directory as the script itself
 
@@ -187,7 +187,6 @@ if compute_spec and not spec_loaded:
 
 # POSTPROCESSING after the raw spectral solver output:
 # enforcing complex conjugation and selecting pointwise the two dominant eigenvalues
-
 if postprocess_spectrum:
 
 
@@ -252,8 +251,8 @@ if postprocess_spectrum:
     # now we have extracted the first two dominant eigenvalues with
     # the property that for complex conjugate pairs (regular modes)
     # they are indeed complex conjugates and lambda_1 has positive imag. part
-    quantities_dict['lambda_1_dom'] = lambda_1
-    quantities_dict['lambda_2_dom'] = lambda_2
+    quantities_dict['lambda_1'] = lambda_1
+    quantities_dict['lambda_2'] = lambda_2
 
     if save_spec:
         specsolv.save_quantities(folder+'/'+filename, quantities_dict)
@@ -282,8 +281,7 @@ if load_quant:
 
     # todo: make it possible to load not the whole list
     quant_names = [ 'lambda_1', 'lambda_2',
-                    'r_inf',
-                    'dr_inf_dmu', 'dr_inf_dsigma',
+                    'r_inf', 'dr_inf_dmu', 'dr_inf_dsigma',
                     'V_mean_inf', 'dV_mean_inf_dmu', 'dV_mean_inf_dsigma',
                     'f', 'psi_r', 'c_mu', 'c_sigma', 'C_mu', 'C_sigma',
                     'mu', 'sigma']
@@ -295,26 +293,16 @@ if load_quant:
     quant_loaded = True
 
 
-# add lambda_1x2regular_1x1diffusive to the quantities in the dictionary
-eigenvalue_sorting = False
-if eigenvalue_sorting:
-    # store the first 2 regular & 1 diffusive eigenmodes
-    lambda_reg,lambda_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
-    # these are not the dominant eigenvalues but ordered with a
-    # differnet paradigm -> chose the nr. of diffusive (nr_diff)
-    # and regular (nr_reg) eigenmodes
+# extract sorted regular and diffusive modes
+get_type_sorted_lambdas = True
+if get_type_sorted_lambdas:
+
+    # define numbers of regular and diffusive modes ()
     nr_reg = 0
     nr_diff = 1
-    # construct matrix containing all chosen eigenvalues
-    lambda_reg_diff = np.zeros((nr_reg + nr_diff, 461, 46)) + 0j
-    for reg in range(nr_reg):
-        lambda_reg_diff[reg, :, :] = lambda_reg[reg,:,:]
-    for diff in range(nr_diff):
-        lambda_reg_diff[nr_reg+diff,:,:] = lambda_diff[diff,:,:]
-
-
-    # these are the three eigenvalues we use now for the computation
-    quantities_dict['lambda_reg_diff'] = lambda_reg_diff
+    quantities_dict['lambda_reg_diff'] = get_lambda_reg_diff(lambda_all, mu,
+                                                             sigma, nr_reg, nr_diff)
+    # save eigenvalues
     specsolv.save_quantities(folder+'/'+filename, quantities_dict)
 
 
@@ -325,17 +313,16 @@ if compute_quant and not quant_loaded:
     # assure that lambda_1 & lambda_2 are in the quantities_dict
     assert 'lambda_1' and 'lambda_2' in quantities_dict # we need to find lambda_1 and lambda_2 before this
 
-
     # this method adds the computed quantities to the
     # (specified in quant_names=[...] to quantities_dict
     specsolv.compute_quantities_rect(quantities_dict,
-                                        # comment out for default
-                                        # computation of all quants
+                                        # computation of the following quantities
                                         quant_names = ['r_inf','V_mean_inf', 'f',
                                                        'psi_r','c_mu','c_sigma','r_inf',
                                                        'C_mu','C_sigma','V_mean_inf',
                                                        'dr_inf_dmu','dr_inf_dsigma',
-                                                       'dV_mean_inf_dmu', 'dV_mean_inf_dsigma'],
+                                                       'dV_mean_inf_dmu',
+                                                       'dV_mean_inf_dsigma'],
                                         N_eigvals = 1, N_procs = cpu_count())
 
 
@@ -353,7 +340,6 @@ if compute_quant and not quant_loaded:
 
 if postprocess_quant:
 
-    
     # remove artefacts due to proximity to double eigenvalues at the transition from real to complex
     # by taking the value of the nearest neighbor for those mu, sigma values
     quantities_postprocess(quantities_dict, 

@@ -1765,6 +1765,17 @@ def quantities_postprocess(quantities, quant_names,
 #            print('<psi_2|phi_1> = {}'.format(inner_prod(psi_2, phi_1, V_vec)))
 #
 
+# get nr_reg (regular) and nr_diff (diffusive) modes
+# and return them in the array lambda_reg_diff
+def get_lambda_reg_diff(lambda_all, mu, sigma, nr_reg, nr_diff):
+
+    lambda_reg, lambda_diff = eigenvalues_reg_diff(lambda_all, mu, sigma)
+    lambda_reg_diff = np.zeros((nr_reg + nr_diff, mu.shape[0], sigma.shape[0])) + 0j
+    for reg in range(nr_reg):
+        lambda_reg_diff[reg, :, :] = lambda_reg[reg,:,:]
+    for diff in range(nr_diff):
+        lambda_reg_diff[nr_reg+diff,:,:] = lambda_diff[diff,:,:]
+
 # get the diffusive AND regular eigenvalues
 def eigenvalues_reg_diff(lambda_all, mu, sigma):
     # get the diffusive eigenmodes
@@ -1772,9 +1783,10 @@ def eigenvalues_reg_diff(lambda_all, mu, sigma):
     mu_range = mu.shape[0]
     sigma_range = sigma.shape[0]
     # array for saving the sorted (diffusive and regular) eigenmodes
-    eigenvalues_sorted_reg = np.zeros((20, 461, 46)) + 0j
-    eigenvalues_sorted_diff = np.zeros((20, 461, 46)) + 0j
-    eigenvalues_sorted_all = np.zeros((20, 461, 46)) + 0j
+    # todo remove this hardcoded shape
+    eigenvalues_sorted_reg = np.zeros((20, mu.shape[0], sigma.shape[0])) + 0j
+    eigenvalues_sorted_diff = np.zeros((20, mu.shape[0], sigma.shape[0])) + 0j
+    eigenvalues_sorted_all = np.zeros((20, mu.shape[0], sigma.shape[0])) + 0j
     # loop over all mu/sigma pairs
     for m in xrange(mu_range): #xrange(mu_range):
         for s in xrange(sigma_range):
