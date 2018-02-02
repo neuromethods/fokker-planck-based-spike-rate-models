@@ -1,15 +1,14 @@
 # fokker-planck-based-spike-rate-models
 
-## Note: the code is currently in working state (beta version), a final release is until September 2017 and will be indicated here.
-
-Implementations of spike rate models derived from networks of adaptive exponential integrate-and-fire models:
+Implementations of spike rate models derived from networks of adaptive exponential integrate-and-fire models, as described in
+Augustin, Ladenbauer, Baumann, Obermayer, Low-dimensional spike rate models derived from networks of adaptive integrate-and-fire neurons: comparison and implementation, PLOS Computational Biology 2017
 
 1. Numerical solution of the mean-field Fokker-Planck (FP) equation using a finite volume method with Scharfetter-Gummel flux approximation.
 2. Low-dimensional ordinary differential equations (ODE) derived from the spectral decomposition of the FP operator. 
-3. Low-dimensional ODE based on a cascade of two linear filters and a nonlinearity determined from the FP equation and semi-analytically fitted.
+3. Low-dimensional ODE based on a cascade of linear filters and a nonlinearity determined from the FP equation.
 
 Furthermore: precalculation codes for the (look-up) quantities involved in (2) and (3).
 
-References: Augustin, Ladenbauer, Baumann, Obermayer (under review)
+For questions please contact us: Moritz Augustin and Josef Ladenbauer
 
 _Code Usage_: change to folder `adex_comparison` and see the README.md file contained therein
