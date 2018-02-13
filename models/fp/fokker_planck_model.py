@@ -61,7 +61,6 @@ def get_v_numba(L, Vi, DT, EL, VT, taum, mu, EIF = True):
     else:
         for i in xrange(L):
             drift[i] = mu
-    drift[np.where(drift == 0.)] = 10e-15
     return drift
 
 def get_v(grid, mu, params):
@@ -76,35 +75,13 @@ def get_v(grid, mu, params):
             VT = params['VT']
             #THIS TERM WILL LATER EXPLICITLY CONTAIN AN ADAPTATION CURRENT
             drift = ((EL - Vi) + DT * np.exp((Vi - np.ones_like(Vi) * VT) / DT)) / taum + mu
-            # idea for Problem v --> 0: set all zero values of the drift array to mininmum value
-            drift[np.where(drift == 0.)] = 10e-15
         elif params['neuron_model'] == 'PIF':
             drift = np.ones_like(Vi) * mu
-            drift[np.where(drift == 0.)] = 10e-15
         else:
             err_mes = 'The model "{}" has not been implemented yet. For options see params dict.'.format(params['neuron_model'])
             raise NotImplementedError(err_mes)
         return drift
-@njit
-def get_diagonals_sg(dim_p, v, dV, dt, D):
-    diag = np.empty(dim_p)
-    lower = np.empty(dim_p - 1)
-    upper = np.empty(dim_p - 1)
-    for i in xrange(1, dim_p - 1):
-        diag[i] = dV/dt + ((v[i + 1])) * (1. / (1. - exp((-v[i + 1] * dV) / D))) + ((v[i])) * (
-        exp((-v[i] * dV) / D) / (1. - exp((-v[i] * dV) / D)))
-        lower[i - 1] = -((v[i])) * (1. / (1. - exp((-v[i] * dV) / D)))
-        upper[i] = -((v[i + 1])) * (exp((-v[i + 1] * dV) / D) / (1. - exp((-v[i + 1] * dV) / D)))
-
-    diag[0] = dV/dt + ((v[1])) * (1. / (1. - exp((-v[1] * dV) / D)))
-    upper[0] = -((v[1])) * ((exp((-v[1] * dV) / D)) / (1. - exp((-v[1] * dV) / D)))
-
-    diag[-1] = dV/dt + ((v[-2])) * ((exp((-v[-2] * dV) / D)) / (1. - exp((-v[-2] * dV) / D))) + ((v[-1])) * ((1. + exp((-v[-1] * dV) / D)) / (1. - exp((-v[-1] * dV) / D)))
-    lower[0] = -((v[1])) * (1. / (1. - exp((-v[1] * dV) / D)))
-    lower[-1] = -((v[-2])) * (1. / (1. - exp((-v[-2] * dV) / D)))
-    return (upper, diag, lower)
-
-
+    
 
 
 import math
@@ -124,135 +101,47 @@ def exp_vdV_D(v,dV,D):
 # len(v) = N+1
 
 
-def diags_A(u,d,l,N,v,D,dV):
-    # todo check this
-    dV_inv = 1./dV
-
-    # Note even though in Matrix A diag,sub,sup
-    # do not have the same shape, here we use
-    # arrays of equal length for all of them
-    # because later we stack a NX3 matrix with them!
-
-    #fill diag
-    # element first and last elemet get overwritten for boundary conditions
-    for i in xrange(1,N-1):
-        # diag[i] = -dV_inv*(v[i]*exp_vdV_D(v[i],dV,D)/(1.-exp_vdV_D(v[i],dV,D))
-        #              +v[i+1]/exp_vdV_D(v[i+1],dV,D))
-        d[i] = -dV_inv*(v[i]*exp_vdV_D(v[i],dV,D)/(1.-exp_vdV_D(v[i],dV,D))
-                           +v[i+1]/(1.-exp_vdV_D(v[i+1],dV,D)))
-        # print(i)
-
-    # fill sub diag
-    for i in xrange(1,N-1):
-        # first element of sub corresponds to p1
-        # --> v_{-} is in this case v[1]
-        l[i-1] = dV_inv*v[i]/(1.-exp_vdV_D(v[i],dV,D))
-        # print(i)
-
-    # fill sup
-    for i in xrange(1,N-1):
-        # sup[i+1] = v[i+1]*exp_vdV_D(v[i+1],dV,D)/(1.-exp_vdV_D(v[i+1],dV,D))
-        u[i+1] = dV_inv*v[i+1]*exp_vdV_D(v[i+1],dV,D)/(1.-exp_vdV_D(v[i+1],dV,D))
-        # print(i)
-
-
-    # boundary conditions
-    # reflecting
-    # d[0] = -dV_inv*(v[1]/(1.-exp_vdV_D(v[1],dV,D)))
-    d[0] = -dV_inv*(v[1]/(1.-exp_vdV_D(v[1],dV,D)))
-    u[1] = dV_inv*(v[1]*exp_vdV_D(v[1],dV,D)/(1.-exp_vdV_D(v[1],dV,D)))
-
-    # u[1] = dV_inv*v[1]*exp_vdV_D(v[1],dV,D)/(1.-exp_vdV_D(v[1],dV,D))
-
-    # absorbing
-    # d[-1] = -dV_inv*( v[-2]*exp_vdV_D(v[-2],dV,D)/(1.-exp_vdV_D(v[-2],dV,D))
-    #              + v[-1]*(1.+exp_vdV_D(v[-1],dV,D))/(1.-exp_vdV_D(v[-1],dV,D)))
-    # l[-2] = dV_inv*v[-2]/(1.-exp_vdV_D(v[-2],dV,D))
-    ##################################################################
-    l[-2] = dV_inv*v[-2]/(1.-exp_vdV_D(v[-2],dV,D))
-    d[-1] = -dV_inv*(v[-2]*exp_vdV_D(v[-2],dV,D)/(1.-exp_vdV_D(v[-2],dV,D))
-                     +v[-1]*(1.+exp_vdV_D(v[-1],dV,D))/(1.-exp_vdV_D(v[-1],dV,D)))
-
 @njit
-def matAdt(mat,N,v,D,dV,dt):
-    # todo check this
+def matAdt_opt(mat,N,v,D,dV,dt):  #TODO: include the fix in ALL repos
     dt_dV = dt/dV
 
-    # Note even though in Matrix A diag,sub,sup
-    # do not have the same shape, here we use
-    # arrays of equal length for all of them
-    # because later we stack a NX3 matrix with them!
-
-    #fill diag
-    # element first and last elemet get overwritten for boundary conditions
     for i in xrange(1,N-1):
-        # diag[i] = -dV_inv*(v[i]*exp_vdV_D(v[i],dV,D)/(1.-exp_vdV_D(v[i],dV,D))
-        #              +v[i+1]/exp_vdV_D(v[i+1],dV,D))
-        mat[1,i] = -dt_dV*(v[i]*exp_vdV_D(v[i],dV,D)/(1.-exp_vdV_D(v[i],dV,D))
-                           +v[i+1]/(1.-exp_vdV_D(v[i+1],dV,D)))
-        # print(i)
-
-    # fill sub diag
-    for i in xrange(1,N-1):
-        # first element of sub corresponds to p1
-        # --> v_{-} is in this case v[1]
-        mat[2,i-1] = dt_dV*v[i]/(1.-exp_vdV_D(v[i],dV,D))
-        # print(i)
-
-    # fill sup
-    for i in xrange(1,N-1):
-        # sup[i+1] = v[i+1]*exp_vdV_D(v[i+1],dV,D)/(1.-exp_vdV_D(v[i+1],dV,D))
-        mat[0,i+1] = dt_dV*v[i+1]*exp_vdV_D(v[i+1],dV,D)/(1.-exp_vdV_D(v[i+1],dV,D))
-        # print(i)
-
-
+        if v[i] != 0.0:
+            exp_vdV_D1 = exp_vdV_D(v[i],dV,D)
+            mat[1,i] = -dt_dV*v[i]*exp_vdV_D1/(1.-exp_vdV_D1) # diagonal
+            mat[2,i-1] = dt_dV*v[i]/(1.-exp_vdV_D1) # lower diagonal
+        else:
+            mat[1,i] = -dt_dV*D/dV # diagonal
+            mat[2,i-1] = dt_dV*D/dV # lower diagonal
+        if v[i+1] != 0.0:
+            exp_vdV_D2 = exp_vdV_D(v[i+1],dV,D)
+            mat[1,i] -= dt_dV*v[i+1]/(1.-exp_vdV_D2) # diagonal  
+            mat[0,i+1] = dt_dV*v[i+1]*exp_vdV_D2/(1.-exp_vdV_D2) # upper diagonal
+        else:
+            mat[1,i] -= dt_dV*D/dV # diagonal
+            mat[0,i+1] = dt_dV*D/dV # upper diagonal
+            
     # boundary conditions
-    # reflecting
-    # d[0] = -dV_inv*(v[1]/(1.-exp_vdV_D(v[1],dV,D)))
-    mat[1,0] = -dt_dV*(v[1]/(1.-exp_vdV_D(v[1],dV,D)))
-    mat[0,1] = dt_dV*(v[1]*exp_vdV_D(v[1],dV,D)/(1.-exp_vdV_D(v[1],dV,D)))
+    if v[1] != 0.0:
+        tmp1 = v[1]/(1.-exp_vdV_D(v[1],dV,D))
+    else:
+        tmp1 = D/dV
+    if v[-1] != 0.0:
+        tmp2 = v[-1]/(1.-exp_vdV_D(v[-1],dV,D))
+    else:
+        tmp2 = D/dV
+    if v[-2] != 0.0:
+        tmp3 = v[-2]/(1.-exp_vdV_D(v[-2],dV,D))
+    else:
+        tmp3 = D/dV
+    
+    mat[1,0] = -dt_dV*tmp1  # first diagonal
+    mat[0,1] = dt_dV*tmp1*exp_vdV_D(v[1],dV,D)  # first upper  
+    mat[2,-2] = dt_dV*tmp3  # last lower
+    mat[1,-1] = -dt_dV * ( tmp3*exp_vdV_D(v[-2],dV,D) 
+                          +tmp2*(1.+exp_vdV_D(v[-1],dV,D)) )  # last diagonal
+    
 
-    # u[1] = dV_inv*v[1]*exp_vdV_D(v[1],dV,D)/(1.-exp_vdV_D(v[1],dV,D))
-
-    # absorbing
-    # d[-1] = -dV_inv*( v[-2]*exp_vdV_D(v[-2],dV,D)/(1.-exp_vdV_D(v[-2],dV,D))
-    #              + v[-1]*(1.+exp_vdV_D(v[-1],dV,D))/(1.-exp_vdV_D(v[-1],dV,D)))
-    # l[-2] = dV_inv*v[-2]/(1.-exp_vdV_D(v[-2],dV,D))
-    ##################################################################
-    mat[2,-2] = dt_dV*v[-2]/(1.-exp_vdV_D(v[-2],dV,D))
-    mat[1,-1] = -dt_dV*(v[-2]*exp_vdV_D(v[-2],dV,D)/(1.-exp_vdV_D(v[-2],dV,D))
-                     +v[-1]*(1.+exp_vdV_D(v[-1],dV,D))/(1.-exp_vdV_D(v[-1],dV,D)))
-
-@njit
-def matAdt_opt(mat,N,v,D,dV,dt):
-    # todo check this
-    dt_dV = dt/dV
-
-    # Note even though in Matrix A diag,sub,sup
-    # do not have the same shape, here we use
-    # arrays of equal length for all of them
-    # because later we stack a NX3 matrix with them!
-    # todo| I have already taken care that v is never 0,
-    # todo| but could be implemented less hacky
-    for i in xrange(1,N-1):
-        # diagonal
-        mat[1,i] = -dt_dV*(v[i]*exp_vdV_D(v[i],dV,D)/(1.-exp_vdV_D(v[i],dV,D))
-                           +v[i+1]/(1.-exp_vdV_D(v[i+1],dV,D)))
-        # lower diagonal
-        mat[2,i-1] = dt_dV*v[i]/(1.-exp_vdV_D(v[i],dV,D))
-        # upper diagonal
-        mat[0,i+1] = dt_dV*v[i+1]*exp_vdV_D(v[i+1],dV,D)/(1.-exp_vdV_D(v[i+1],dV,D))
-
-    # boundary conditions
-    # first diagonal
-    mat[1,0] = -dt_dV*(v[1]/(1.-exp_vdV_D(v[1],dV,D))) # check
-    # first upper
-    mat[0,1] = dt_dV * v[1]*exp_vdV_D(v[1],dV,D)/(1.-exp_vdV_D(v[1],dV,D)) #check
-    # last lower
-    mat[2,-2] = dt_dV*v[-2]/(1.-exp_vdV_D(v[-2],dV,D)) #check
-    # last diagonal
-    mat[1,-1] = -dt_dV*(v[-2]*exp_vdV_D(v[-2],dV,D)/(1.-exp_vdV_D(v[-2],dV,D))
-                     +v[-1]*(1.+exp_vdV_D(v[-1],dV,D))/(1.-exp_vdV_D(v[-1],dV,D)))
 
 # initial probability distribution
 def initial_p_distribution(grid,params):
@@ -387,7 +276,7 @@ def sim_fp_sg(input, params, rec = False, FS=False):#, timing=None):
 
 
     # optimizations
-    dV_dt = grid.dV/dt
+    #dV_dt = grid.dV/dt
     dV = grid.dV
     p = p0
     N_V = grid.N_V
@@ -504,7 +393,10 @@ def sim_fp_sg(input, params, rec = False, FS=False):#, timing=None):
             raise NotImplementedError
 
         # compute rate
-        r[n] = (v[-1]*((1.+exp((-v[-1]*dV)/D))/(1.-exp((-v[-1]*dV)/D)))*p_new[-1])
+        if v[-1] != 0.0:
+            r[n] = v[-1]*((1.+exp((-v[-1]*dV)/D))/(1.-exp((-v[-1]*dV)/D)))*p_new[-1]
+        else:
+            r[n] = 2*D/dV * p_new[-1]
 
         # if no FS, use this for the adaptation equation
         r_adapt = r[n]
